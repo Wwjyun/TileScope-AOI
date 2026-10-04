@@ -18,9 +18,25 @@
 - [ ] 完成 Qt、原廠 SDK 與打包相依元件的散布條件審查。
 - [ ] 決定未來 repo 名稱。本次歷史重建已獲使用者授權，目的地為現有私有 repo；未來重寫仍須明確授權。
 
+## Rust 前端重構評估與遷移
+
+本階段先評估並與使用者確認方案；目前只新增規劃，尚未選定框架或開始重寫。先以沿用 Python 檢測核心及既有 CUDA ABI 為評估基準。
+
+- [ ] 盤點現有檢測、結果、Recipe Designer、批次、監控與 CCD 頁面的操作流程，確認第一階段範圍及 OP／工程師權限。
+- [ ] 評估 Tauri 2 作為桌面容器與封裝方案：網頁 GUI 加 Rust 宿主；若需求是畫面也由 Rust 實作，再比較 egui／eframe、Slint 等原生 GUI 方案。確認 Windows、繁體中文、高 DPI、離線部署與相依授權條件。
+- [ ] 評估「網頁 GUI → Tauri／Rust → Python sidecar → CUDA／設備」的串接方式；比較子程序 IPC 與直接呼叫方案，定義 Recipe、工作 ID、進度、結果、取消、錯誤及實際 backend 的介面。
+- [ ] 梳理 `CcdController`、GUI workers 與 workflow controllers 的 Qt 相依；把可共用的檢測／設備流程整理成不依賴 Qt 的介面，保留連線、關閉、取消與資源釋放順序。
+- [ ] 驗證大型影像縮放、平移、座標對齊、輪廓疊圖與批次縮圖；評估影像傳輸及快取，避免以 JSON 傳送完整像素，限制佇列與記憶體使用。
+- [ ] 建立最小原型：合成影像、demo Recipe、單張檢測、PASS／NG、結果顯示及取消；比對現有 CPU 結果，確認缺 CUDA DLL fallback 和嚴格 CUDA 報錯行為。
+- [ ] 分階段移植 Recipe Designer、批次／監控及結果頁；保留參數分組、隱藏參數值與後端權限驗證，規劃現有 QSettings／使用者設定的相容遷移。
+- [ ] 最後串接 CCD／光源／取像流程，驗證執行緒、重連、關閉和忙碌時取消；載入 Recipe 不得自行寫入設備，實機驗收另列待辦。
+- [ ] 評估 Tauri Windows `.msi`／NSIS `setup.exe`、Python sidecar、CUDA DLL／SDK 的佈署與版本對應；確認 WebView2 離線安裝策略，以及無 Python 開發環境、無 GPU／SDK 和中文路徑的執行結果。
+- [ ] 訂定新舊 GUI 的行為與效能驗收基準，量測啟動、影像顯示、批次吞吐及記憶體；遷移期間保留現有 GUI，原型結果與使用者確認後再決定正式切換。
+
+參考：[Tauri Windows 封裝](https://v2.tauri.app/distribute/windows-installer/)、[Python 等外部程式的 sidecar 封裝](https://v2.tauri.app/develop/sidecar/)。
+
 ## 後續工程
 
-- [ ] 與使用者討論 Rust GUI 的範圍、介面與遷移方式；本次不開始重建。
 - [ ] 【實物】GPU／設備硬體驗收與長時間穩定性。合成圖、fake backend 和靜態檢查不能勾選此項。
 - [ ] 依完整 GPU pipeline 需求繼續候選抽取、輪廓、幾何與統計在 device 的等價驗證。
 - [ ] 維持 CPU 正確性參考、完整 detector fallback 與舊 native ABI 相容。
@@ -50,3 +66,9 @@
 - 目前來源不追蹤個人 agent 設定／產物地圖；原檔仍留在本機，加入 ignore 避免帶回遠端。
 - 獨立候選目錄完整 unittest 1219 項通過（45.470 秒）；compileall、CUDA preflight 與來源 launcher smoke 通過。修正光源測試等待 Qt 狀態更新的競態，設備實作未變更。
 - 已驗證分支／標籤可達歷史的替換；GitHub 舊 SHA 快取、Actions 或舊複本的清除不由 Git force-push 保證。來源權利與公開政策維持待確認。
+
+### 2026-10-04 — Rust 前端規劃
+
+- 已新增 Rust 前端重構的評估與分階段遷移待辦，納入 Tauri 桌面封裝、Python sidecar、影像顯示、設備生命週期及驗收方式。
+- 框架選型、原型、實作與 Windows 安裝包驗收仍待完成；本次只修改工作清單。
+- 驗證：`unittest discover -s tests -v` 共 1219 項通過（45.143 秒）；`compileall main.py gui_launcher.py tools contour_preprocess_tool core detectors devices gui gpu`、`gpu/preflight_cuda_build.py` 與 `git diff --check` 通過。未進行 CUDA 編譯或設備實機驗收。
