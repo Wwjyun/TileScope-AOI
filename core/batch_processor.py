@@ -27,6 +27,7 @@ _OPENCV_THREAD_BUDGET_LOCK = threading.Lock()
 
 
 BatchProgressCallback = Callable[[int, str], None]
+BatchItemCallback = Callable[[dict, int, int], None]
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,7 @@ class BatchInspectionProcessor(LogMixin):
         max_workers: int | None = None,
         gpu_session: GpuExecutionSession | None = None,
         cancel_event: threading.Event | None = None,
+        item_callback: BatchItemCallback | None = None,
     ):
         self.input_dir = Path(input_dir)
         self.recipe_path = Path(recipe_path)
@@ -77,6 +79,7 @@ class BatchInspectionProcessor(LogMixin):
         self.output_overrides = output_overrides
         self.recursive = recursive
         self.progress_callback = progress_callback
+        self.item_callback = item_callback
         self.max_workers = max_workers
         # A GUI-owned session outlives this batch so its context, buffers and warm-up are reused.
         self.gpu_session = gpu_session
@@ -195,6 +198,8 @@ class BatchInspectionProcessor(LogMixin):
                         )
                     results_by_index[index] = result
                     completed += 1
+                    if self.item_callback is not None:
+                        self.item_callback(result.to_dict(), index, total)
                     self._progress(
                         int(completed / total * 100),
                         (

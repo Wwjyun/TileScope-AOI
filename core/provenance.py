@@ -78,8 +78,16 @@ def _read_packaged_provenance() -> dict[str, Any] | None:
 
 
 def _git(*args: str) -> str:
+    # stdin is redirected to DEVNULL so a host that spawned this process with piped stdio does
+    # not leak its pipe handles into Git (which otherwise hangs on Windows when `close_fds`
+    # stays disabled); Git never reads stdin for these read-only queries.
     return subprocess.run(
-        ["git", *args], capture_output=True, check=True, text=True, encoding="utf-8"
+        ["git", *args],
+        capture_output=True,
+        check=True,
+        text=True,
+        encoding="utf-8",
+        stdin=subprocess.DEVNULL,
     ).stdout.strip()
 
 
