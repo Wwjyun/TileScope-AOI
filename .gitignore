@@ -62,3 +62,12 @@ tmp_*.txt
 /CLAUDE.md
 /HERMES.md
 /ARTIFACTS.md
+
+# Tauri desktop shell (desktop/)
+desktop/node_modules/
+desktop/dist/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+desktop/src-tauri/sidecar/*
+!desktop/src-tauri/sidecar/.gitkeep
+desktop/app-icon.png
