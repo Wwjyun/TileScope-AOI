@@ -22,6 +22,9 @@
 
 本階段先評估並與使用者確認方案；目前只新增規劃，尚未選定框架或開始重寫。先以沿用 Python 檢測核心及既有 CUDA ABI 為評估基準。
 
+新 GUI 設計原型：[`design_handoff_aoi_gui/`](design_handoff_aoi_gui/README.md)（v2，網頁 GUI → Tauri 2／Rust → Python sidecar）。原型提出 Tauri 2、stdio JSON-RPC sidecar、影像以暫存檔路徑傳遞及 IPC 契約，作為以下評估的候選方案，尚待原型驗證與使用者確認；功能以現行 PySide6 GUI 為基準，README 的「功能對等清單」對照現行功能與原型位置。
+
+- [x] 依 `design_handoff_aoi_gui/README.md` 的功能對等清單補齊原型：GPU 預熱、CPU／GPU 對照、批量數據圖表、相機直連監控與原圖保存、結果效能分析與 NG 切換、Recipe 精度與相機 CCD 區段、米輪／Sensor 中繼／存圖／觸發與 Sapera 診斷、`[E-xxxx]` 錯誤碼及其餘輸出選項。
 - [ ] 盤點現有檢測、結果、Recipe Designer、批次、監控與 CCD 頁面的操作流程，確認第一階段範圍及 OP／工程師權限。
 - [ ] 評估 Tauri 2 作為桌面容器與封裝方案：網頁 GUI 加 Rust 宿主；若需求是畫面也由 Rust 實作，再比較 egui／eframe、Slint 等原生 GUI 方案。確認 Windows、繁體中文、高 DPI、離線部署與相依授權條件。
 - [ ] 評估「網頁 GUI → Tauri／Rust → Python sidecar → CUDA／設備」的串接方式；比較子程序 IPC 與直接呼叫方案，定義 Recipe、工作 ID、進度、結果、取消、錯誤及實際 backend 的介面。
@@ -42,6 +45,19 @@
 - [ ] 維持 CPU 正確性參考、完整 detector fallback 與舊 native ABI 相容。
 
 ## 完成紀錄
+
+### 2026-10-04 — v2 GUI 原型補齊
+
+- 依功能對等清單補齊原型：GPU 預熱、CPU／GPU 對照、批量數據圖表畫面、相機直連監控（佇列丟棄、原圖錯誤、散佈圖）、結果 NG 切換與效能分析、Recipe 精度／三段後端政策／相機 CCD 區段、設備頁米輪／Sensor 中繼／RS-232 光源／觸發與 Sapera 診斷／Extension Compare 與錯誤碼、設定抽屜輸出選項。
+- 示範 Recipe 的後端設定改為 `auto`，原型的後端政策與 `gpu.mode` 語意一致。
+- 驗證：以本機靜態伺服器載入 `AOI Console.html`，逐一開啟七個畫面與相機直連分支，瀏覽器 console 無錯誤。只修改設計原型，未修改應用程式碼。
+
+### 2026-10-04 — 新 GUI 設計原型納入
+
+- 將 v2 設計原型（`AOI Console.html`、`app/` React 原型與交接 README）放入 `design_handoff_aoi_gui/`，取代先前留下的空資料夾；示範資料僅含 demo1–demo12、DEMO Recipe 與合成影像。
+- 修正交接 README 與現行契約的衝突：backend 規則改回 `gpu.mode` 的 cpu／auto／cuda 語意（`cuda` 不得回退 CPU）、相機設定只在連線時寫入、OP 不得開啟設備頁、參數分組以 `parameter_group` 為準。
+- 依現行 `gui/` 補入原型沒畫到的功能需求：GPU 預熱、CPU／GPU 對照、批量數據圖表、相機直連監控、效能分析、Recipe 相機 CCD 區段、米輪／Sensor 中繼／光源／診斷、設備錯誤碼與輸出選項，並新增功能對等清單與對應待辦。
+- 只更新設計文件與 Todo，未修改應用程式碼，也未開始 Rust／Tauri 實作。
 
 ### 2026-10-04 — 私有示範整理
 
