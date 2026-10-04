@@ -327,7 +327,7 @@ def main() -> int:
     if args.warmup < 0 or args.repetitions <= 0:
         parser.error("--warmup must be >= 0 and --repetitions must be > 0")
 
-    work = args.work or Path(tempfile.mkdtemp(prefix="visionflow_demo_"))
+    work = args.work or Path(tempfile.mkdtemp(prefix="tilescope_demo_"))
     canvas = work / "demo_canvas.bmp"
     template_path = work / "demo_anchor.png"
     if args.profile == "demo":

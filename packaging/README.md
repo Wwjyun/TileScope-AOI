@@ -12,14 +12,14 @@ packaging/
 
 | 目標 | 建置腳本 | spec |
 | --- | --- | --- |
-| VisionFlow AOI 主程式 | `scripts/build_exe.ps1` | `specs/VisionFlow AOI.spec` |
+| TileScope AOI Classic 主程式 | `scripts/build_exe.ps1` | `specs/TileScope AOI Classic.spec` |
 | Utility Tools 五支合集 ZIP | `scripts/build_utility_tools.ps1 -Version X.Y.Z` | 由下列五支 spec 組合 |
 | NG Tile 面積分類 | `scripts/build_ng_tile_area_tool.ps1` | `specs/NG Tile Area Tool.spec` |
 | Pattern Anchor Grid 批量切圖 | `scripts/build_pattern_grid_tile_exporter.ps1` | `specs/Pattern Grid Tile Exporter.spec` |
 | 矩陣 CSV 彙總 | `scripts/build_matrix_summary_exporter.ps1` | `specs/Matrix Summary Exporter.spec` |
 | JSON／CSV 散點圖匯出 | `scripts/build_scatter_plot_exporter.ps1` | `specs/Scatter Plot Exporter.spec` |
 | Tile 缺陷分布 HTML | `scripts/build_tile_defect_distribution_exporter.ps1` | `specs/Tile Defect Distribution Exporter.spec` |
-| Traditional CV 原圖調參工具 | `scripts/build_contour_preprocess_tool.ps1 -Version 1.0.0` | `specs/Traditional CV Tuning Tool.spec` |
+| Traditional CV 原圖調參工具 | `scripts/build_contour_preprocess_tool.ps1 -Version 1.0.0` | `specs/TileScope Traditional CV Tuning Tool.spec` |
 
 指令一律從 repository 根目錄執行，產物落在根目錄的 `dist\`、`build\` 與 `release_artifacts\`（三者都不進版控）。
 

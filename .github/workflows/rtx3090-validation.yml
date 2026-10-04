@@ -21,7 +21,7 @@ on:
 
 # All RTX 3090 validation runs share the same self-hosted GPU.
 concurrency:
-  group: visionflow-rtx3090
+  group: tilescope-rtx3090
   cancel-in-progress: false
 
 permissions:
@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   cuda-runtime:
-    if: github.repository == 'Wwjyun/VisionFlow-AOI' || github.repository == 'wjcudalearning/VisionFlow'
+    if: github.repository == 'Wwjyun/TileScope-AOI' || github.repository == 'wjcudalearning/VisionFlow'
     runs-on: [self-hosted, Windows, X64, gpu, rtx3090]
     timeout-minutes: 120
     env:
@@ -157,7 +157,7 @@ jobs:
             exit 0
           }
           & $nsys.Source profile --force-overwrite true --sample none --trace cuda,nvtx,osrt `
-            --output outputs_validation/visionflow_cuda_smoke .\gpu\test_cuda_api.exe
+            --output outputs_validation/tilescope_cuda_smoke .\gpu\test_cuda_api.exe
           if ($LASTEXITCODE -ne 0) { throw "nsys profile failed with exit code $LASTEXITCODE" }
           "nsys capture completed" | Tee-Object -FilePath outputs_validation/nsight_status.txt
       - name: Upload CUDA build and benchmark artifacts

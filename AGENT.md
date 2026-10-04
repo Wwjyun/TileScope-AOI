@@ -4,7 +4,7 @@ These rules apply to all future Codex work in this repository.
 
 ## Project and environment
 
-VisionFlow AOI is a private synthetic demonstration of a recipe-driven OpenCV inspection system with a PySide6 GUI and an optional CUDA DLL backend.
+TileScope AOI is a private synthetic demonstration of a recipe-driven OpenCV inspection system with a PySide6 GUI and an optional CUDA DLL backend.
 
 ## Source and distribution boundary
 
@@ -21,8 +21,8 @@ Primary entry points:
 
 - CLI: `python main.py --image <image> --recipe <recipe.yaml> --output <directory>`
 - GUI: `python main.py --gui`
-- Packaged GUI entry/smoke: `gui_launcher.py` and `VisionFlow AOI.exe --smoke-test`
-- Windows package build: `packaging/scripts/build_exe.ps1` using the tracked `packaging/specs/VisionFlow AOI.spec`
+- Packaged GUI entry/smoke: `gui_launcher.py` and `TileScope AOI Classic.exe --smoke-test`
+- Windows package build: `packaging/scripts/build_exe.ps1` using the tracked `packaging/specs/TileScope AOI Classic.spec`
 - Traditional-CV tuning reference: `contour_preprocess_tool/` (run with `python -m contour_preprocess_tool`; build the independent EXE with `packaging/scripts/build_contour_preprocess_tool.ps1`)
 - Standalone utilities: `tools/export_ng_tiles_by_area.py`, `tools/export_pattern_grid_tiles.py`, `tools/export_matrix_summary.py`, `tools/export_scatter_plots.py`, and `tools/export_tile_defect_distribution.py`
 - Utility bundle build: `packaging/scripts/build_utility_tools.ps1`; individual utility builds use their dedicated `build_*_exporter.ps1` or `build_ng_tile_area_tool.ps1` entry point under `packaging/scripts/`
@@ -48,7 +48,7 @@ The normal development machine may not have `nvcc`, CMake, or an NVIDIA GPU. Nev
 
 ## Module ownership
 
-- Top-level entry points: keep CLI orchestration in `main.py`, packaged startup/smoke in `gui_launcher.py`, and main packaging in `packaging/scripts/build_exe.ps1` and `packaging/specs/VisionFlow AOI.spec`.
+- Top-level entry points: keep CLI orchestration in `main.py`, packaged startup/smoke in `gui_launcher.py`, and main packaging in `packaging/scripts/build_exe.ps1` and `packaging/specs/TileScope AOI Classic.spec`.
 - `packaging/`: every PyInstaller build entry point and spec. Keep build scripts in `packaging/scripts/` and specs in `packaging/specs/`; do not add new root-level `build_*.ps1` or `*.spec` files. Specs derive the repository root from `SPECPATH` because PyInstaller resolves relative paths against the spec directory, and build scripts derive it from `$PSScriptRoot`'s grandparent. Keep these files ASCII-only: Windows PowerShell 5.1 reads BOM-less files as ANSI and a non-ASCII comment can swallow the line ending.
 - `tools/`: standalone post-processing and tile-export utility sources; each tool keeps its dedicated spec/build entry point under `packaging/`.
 - `core/`: pipeline, recipe loading/building, tiling, aggregation, reporting, profiling, batch/monitor processing, result schemas/compaction, GPU sessions/bridge, preprocessing plans and executors.
@@ -190,7 +190,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 For packaging, `gui_launcher.py`, or spec changes, build through `packaging\scripts\build_exe.ps1` and run the packaged `--smoke-test` when the local environment can support a package build. The smoke must cover bundled recipe/MainWindow startup, CPU-only execution, missing-DLL fallback equivalence with zero GPU calls, and explicit strict-CUDA failure.
 
-For standalone utility or utility spec/build changes, use the matching dedicated build script and run that utility's packaged `--smoke-test`. Keep utility bundle tags (`utility-tools-vX.Y.Z`) and the legacy NG Tile tool tag namespace separate from VisionFlow AOI application tags (`vX.Y.Z`).
+For standalone utility or utility spec/build changes, use the matching dedicated build script and run that utility's packaged `--smoke-test`. Keep utility bundle tags (`utility-tools-vX.Y.Z`) and the legacy NG Tile tool tag namespace separate from TileScope AOI application tags (`vX.Y.Z`).
 
 For CUDA header/source/API changes:
 

@@ -9,7 +9,7 @@ export function TitleBar() {
   return (
     <div className="titlebar" data-tauri-drag-region="">
       <span className="titlebar-logo" data-tauri-drag-region="">A</span>
-      <span className="titlebar-name" data-tauri-drag-region="">VisionFlow AOI Desktop</span>
+      <span className="titlebar-name" data-tauri-drag-region="">TileScope AOI</span>
       <span className="mono" style={{ color: "var(--text-3)", fontSize: 11 }} data-tauri-drag-region="">v0.1.0</span>
       <div style={{ flex: 1 }} data-tauri-drag-region=""></div>
       <div style={{ display: "flex" }}>

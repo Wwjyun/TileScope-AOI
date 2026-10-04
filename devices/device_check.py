@@ -87,7 +87,7 @@ class DeviceCheckReport:
         return min((item.status for item in self.items), key=STATUS_ORDER.__getitem__, default=PASS)
 
     def text(self) -> str:
-        out = [f"VisionFlow AOI 設備自檢 {self.stamp}", f"總結（優先抄這行）：{self.summary_line()}", ""]
+        out = [f"TileScope AOI 設備自檢 {self.stamp}", f"總結（優先抄這行）：{self.summary_line()}", ""]
         if self.startup_readiness:
             out.extend(("相機直連監控：" + self.startup_readiness, ""))
         for item in self.items:

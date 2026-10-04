@@ -68,7 +68,7 @@ class YoloXAcceptanceTests(unittest.TestCase):
         )
 
     def test_manifest_rejects_test_model_without_explicit_test_override(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_yolox_manifest_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_yolox_manifest_") as temporary:
             root = Path(temporary)
             positive = root / "positive.png"
             negative = root / "negative.png"
@@ -125,7 +125,7 @@ class YoloXAcceptanceTests(unittest.TestCase):
         })
 
     def test_manifest_requires_positive_and_negative_cases(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_yolox_manifest_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_yolox_manifest_") as temporary:
             root = Path(temporary)
             image = root / "positive.png"
             _write_png(image)

@@ -27,7 +27,7 @@ def _english_words(message: str) -> set[str]:
 
 class ProgressMessageLanguageTests(unittest.TestCase):
     def test_pipeline_and_batch_progress_messages_are_traditional_chinese(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_progress_zh_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_progress_zh_") as temporary:
             root = Path(temporary)
             images = root / "images"
             images.mkdir()

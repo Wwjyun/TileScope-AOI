@@ -314,7 +314,7 @@ class PipelineHostImageBufferTests(unittest.TestCase):
         }
         rng = np.random.default_rng(401)
         reports = []
-        with tempfile.TemporaryDirectory(prefix="visionflow_host_buffer_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_host_buffer_") as temporary:
             root = Path(temporary)
             for index in range(3):
                 image = rng.integers(0, 256, size=(96, 130, 3), dtype=np.uint8)

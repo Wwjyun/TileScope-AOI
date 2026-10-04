@@ -850,7 +850,7 @@ class GuiWorkflowTests(unittest.TestCase):
 
     def test_yolox_model_file_dialog_validates_and_switches_registry_model(self):
         model_root = Path("models/demo12")
-        with tempfile.TemporaryDirectory(prefix="visionflow_yolox_file_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_yolox_file_") as temporary:
             root = Path(temporary)
             model_file = root / "fixture.onnx"
             model_file.write_bytes(
@@ -899,7 +899,7 @@ class GuiWorkflowTests(unittest.TestCase):
 
     def test_yolox_model_file_picker_rejects_unregistered_and_pytorch_files(self):
         model_root = Path("models/demo12")
-        with tempfile.TemporaryDirectory(prefix="visionflow_yolox_invalid_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_yolox_invalid_") as temporary:
             root = Path(temporary)
             (root / "registry.yaml").write_text(
                 (model_root / "registry.yaml").read_text(encoding="utf-8"),
@@ -961,7 +961,7 @@ class GuiWorkflowTests(unittest.TestCase):
 
     def test_yolox_checksum_error_keeps_designer_open_and_blocks_save(self):
         model_root = Path("models/demo12")
-        with tempfile.TemporaryDirectory(prefix="visionflow_yolox_gui_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_yolox_gui_") as temporary:
             root = Path(temporary)
             (root / "fixture.onnx").write_bytes(
                 (model_root / "yolox_tiny_fixture.onnx").read_bytes()
@@ -974,7 +974,7 @@ class GuiWorkflowTests(unittest.TestCase):
             (root / "registry.yaml").write_text(registry, encoding="utf-8")
 
             with patch.dict(
-                os.environ, {"VISIONFLOW_YOLOX_MODEL_DIR": str(root)}
+                os.environ, {"TILESCOPE_YOLOX_MODEL_DIR": str(root)}
             ):
                 screen = DesignerScreen()
                 screen.set_mode("admin")
@@ -1079,7 +1079,7 @@ class GuiWorkflowTests(unittest.TestCase):
 
     def test_main_window_restores_yolox_model_directory_preference(self):
         model_root = Path("models/demo12")
-        with tempfile.TemporaryDirectory(prefix="visionflow_yolox_pref_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_yolox_pref_") as temporary:
             root = Path(temporary)
             (root / "fixture.onnx").write_bytes(
                 (model_root / "yolox_tiny_fixture.onnx").read_bytes()
@@ -1096,7 +1096,7 @@ class GuiWorkflowTests(unittest.TestCase):
             settings.sync()
 
             with patch.dict(os.environ, {}, clear=False):
-                os.environ.pop("VISIONFLOW_YOLOX_MODEL_DIR", None)
+                os.environ.pop("TILESCOPE_YOLOX_MODEL_DIR", None)
                 window = MainWindow(settings=settings)
                 window.designer_screen.set_mode("admin")
                 window.designer_screen._select_detector("demo12")
@@ -1105,7 +1105,7 @@ class GuiWorkflowTests(unittest.TestCase):
                 self.assertEqual(picker.model_path(), (root / "fixture.onnx").resolve())
                 self.assertEqual(window.yolox_model_directory, root.resolve())
                 self.assertEqual(
-                    os.environ["VISIONFLOW_YOLOX_MODEL_DIR"], str(root.resolve())
+                    os.environ["TILESCOPE_YOLOX_MODEL_DIR"], str(root.resolve())
                 )
                 window._save_preferences()
                 self.assertEqual(

@@ -1656,7 +1656,7 @@ class CpuFallbackRegressionTests(unittest.TestCase):
 
     def test_missing_gpu_fallback_matches_cpu_only_result(self):
         image = np.random.default_rng(20260714).integers(0, 256, size=(128, 128, 3), dtype=np.uint8)
-        with tempfile.TemporaryDirectory(prefix="visionflow_cpu_fallback_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_cpu_fallback_") as temporary:
             root = Path(temporary)
             image_path = root / "input.png"
             encoded, payload = cv2.imencode(".png", image)
@@ -1687,7 +1687,7 @@ class CpuFallbackRegressionTests(unittest.TestCase):
         )
 
     def test_missing_gpu_without_cpu_fallback_fails_explicitly(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_strict_gpu_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_strict_gpu_") as temporary:
             root = Path(temporary)
             recipe = self._recipe()
             recipe["gpu"]["tiling"] = True

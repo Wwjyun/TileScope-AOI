@@ -349,7 +349,7 @@ class ControllerLightTests(LightControllerCase):
         self.light.fail_sends = False
         self.light.sent.clear()
         self.controller.close()
-        self.assertEqual(self.light.sent, [b"OFF"], "closing VisionFlow switches the light off")
+        self.assertEqual(self.light.sent, [b"OFF"], "closing TileScope AOI switches the light off")
 
     def test_nothing_configured_and_missing_controller(self):
         self.assertIsNone(self.controller.light_on())

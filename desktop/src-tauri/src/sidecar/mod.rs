@@ -400,11 +400,11 @@ fn default_repo_root() -> PathBuf {
 
 fn local_data_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("LOCALAPPDATA") {
-        PathBuf::from(dir).join("VisionFlowAOI")
+        PathBuf::from(dir).join("TileScopeAOI")
     } else if let Ok(dir) = std::env::var("APPDATA") {
-        PathBuf::from(dir).join("VisionFlowAOI")
+        PathBuf::from(dir).join("TileScopeAOI")
     } else {
-        std::env::temp_dir().join("VisionFlowAOI")
+        std::env::temp_dir().join("TileScopeAOI")
     }
 }
 

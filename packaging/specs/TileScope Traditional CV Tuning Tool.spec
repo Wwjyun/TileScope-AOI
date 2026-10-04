@@ -7,7 +7,7 @@ from pathlib import Path
 SPEC_DIR = Path(SPECPATH).resolve()
 ROOT = SPEC_DIR.parent.parent
 ENTRY_POINT = 'contour_preprocess_tool/launcher.py'
-VERSION_INFO = ROOT / 'build' / 'version_info' / 'Traditional CV Tuning Tool.txt'
+VERSION_INFO = ROOT / 'build' / 'version_info' / 'TileScope Traditional CV Tuning Tool.txt'
 
 a = Analysis(
     [str(ROOT / ENTRY_POINT)],
@@ -47,7 +47,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='Traditional CV Tuning Tool',
+    name='TileScope Traditional CV Tuning Tool',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

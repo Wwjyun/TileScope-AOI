@@ -9,6 +9,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from core.env_names import env_value
+
 
 def sha256_bytes(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
@@ -28,9 +30,9 @@ def build_provenance() -> dict[str, Any]:
 @lru_cache(maxsize=1)
 def _cached_build_provenance() -> tuple[str, bool | None, str]:
     """Resolve build identity once; a running executable cannot change its own build."""
-    env_commit = os.environ.get("VISIONFLOW_BUILD_COMMIT", "").strip()
+    env_commit = (env_value("BUILD_COMMIT") or "").strip()
     if env_commit:
-        return env_commit, _env_bool("VISIONFLOW_BUILD_DIRTY"), "environment"
+        return env_commit, _env_bool("BUILD_DIRTY"), "environment"
     packaged = _read_packaged_provenance()
     if packaged is not None:
         return str(packaged["commit"]), bool(packaged["dirty"]), str(packaged["source"])
@@ -92,4 +94,4 @@ def _git(*args: str) -> str:
 
 
 def _env_bool(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes"}
+    return (env_value(name) or "").strip().lower() in {"1", "true", "yes"}

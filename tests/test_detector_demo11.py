@@ -209,7 +209,7 @@ class FlowTestEndToEndTests(unittest.TestCase):
     """CLI and batch flows driven by the flow-test Recipe (1100x700 image -> 3x2 grid of 512 px tiles)."""
 
     def setUp(self):
-        self._temporary = tempfile.TemporaryDirectory(prefix="visionflow_flow_test_")
+        self._temporary = tempfile.TemporaryDirectory(prefix="tilescope_flow_test_")
         self.root = Path(self._temporary.name)
         self.images = self.root / "images"
         self.images.mkdir()

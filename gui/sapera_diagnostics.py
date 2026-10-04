@@ -118,7 +118,7 @@ def report_text(report: SaperaDiagnosticsReport) -> str:
     """Build the UTF-8 export body; every section states where its data came from."""
 
     lines = [
-        "VisionFlow AOI Sapera 診斷匯出（CCD 控制頁）",
+        "TileScope AOI Sapera 診斷匯出（CCD 控制頁）",
         f"匯出時間：{report.exported_at or '（未知）'}",
         f"schema：{EXPORT_SCHEMA}",
         "",

@@ -17,15 +17,15 @@ if ($Version -ne $expectedVersion) {
 }
 
 $python = Join-Path $RepoRoot "env\Scripts\python.exe"
-$spec = Join-Path $SpecRoot "Traditional CV Tuning Tool.spec"
+$spec = Join-Path $SpecRoot "TileScope Traditional CV Tuning Tool.spec"
 $readme = Join-Path $RepoRoot "contour_preprocess_tool\README.md"
 $distRoot = if ($OutputDirectory) {
     [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $OutputDirectory))
 } else {
-    Join-Path $RepoRoot "dist\Traditional-CV-Tuning-Tool"
+    Join-Path $RepoRoot "dist\TileScope-Traditional-CV-Tuning-Tool"
 }
 $workRoot = Join-Path $RepoRoot "build\traditional_cv_tuning_tool"
-$exePath = Join-Path $distRoot "Traditional CV Tuning Tool.exe"
+$exePath = Join-Path $distRoot "TileScope Traditional CV Tuning Tool.exe"
 
 foreach ($requiredPath in @($python, $spec, $readme)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
@@ -41,9 +41,9 @@ try {
     $buildArguments = @{
         PythonPath = $python
         SpecPath = $spec
-        VersionInfoPath = (Join-Path $RepoRoot "build\version_info\Traditional CV Tuning Tool.txt")
-        ProductName = "Traditional CV Tuning Tool"
-        ExecutableName = "Traditional CV Tuning Tool.exe"
+        VersionInfoPath = (Join-Path $RepoRoot "build\version_info\TileScope Traditional CV Tuning Tool.txt")
+        ProductName = "TileScope Traditional CV Tuning Tool"
+        ExecutableName = "TileScope Traditional CV Tuning Tool.exe"
         Version = $Version
         DistPath = $distRoot
         WorkPath = $workRoot
@@ -53,7 +53,7 @@ try {
     Copy-Item -LiteralPath $readme -Destination (Join-Path $distRoot "README.md") -Force
     $commit = (& git rev-parse HEAD).Trim()
     @(
-        "Traditional CV Tuning Tool"
+        "TileScope Traditional CV Tuning Tool"
         "Version: $Version"
         "Git commit: $commit"
         "Platform: Windows x64"

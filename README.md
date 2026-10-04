@@ -1,4 +1,4 @@
-# VisionFlow AOI — 私有示範版
+# TileScope AOI — 私有示範版
 
 以 Recipe 驅動的 OpenCV 檢測程式，提供 PySide6 GUI 與選用 CUDA backend。
 目前使用人工生成的幾何圖形與中性預設值；不提供產品驗收或產線校準設定。

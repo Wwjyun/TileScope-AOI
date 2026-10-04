@@ -9,6 +9,7 @@ from collections.abc import Callable, Mapping, Sequence
 from ctypes import POINTER, c_int16, c_int32, c_uint8, c_uint16, c_uint32, c_uint64
 from pathlib import Path
 
+from core.env_names import env_value
 from devices.ccd_models import (
     CARD_ID_RANGE,
     EXTENSION_CHANNEL_COUNT,
@@ -30,7 +31,7 @@ from devices.interfaces import MeterWheel
 # ============================================================
 
 DLL_NAME = "LSI8181_64.dll"
-DLL_PATH_ENV = "VISIONFLOW_LSI8181_DLL"
+DLL_PATH_ENV = "TILESCOPE_LSI8181_DLL"
 SUCCESS = 0
 
 QUADRATURE_MODE = 0
@@ -73,7 +74,7 @@ FUNCTION_SIGNATURES: dict[str, tuple] = {
     "LSI8181_compare_offset_output_point_read": (c_uint8, c_uint8, POINTER(c_uint8)),
 }
 
-_SIMULATOR_HINT = "可設定環境變數 VISIONFLOW_CCD_SIMULATOR=1 使用模擬米輪。"
+_SIMULATOR_HINT = "可設定環境變數 TILESCOPE_CCD_SIMULATOR=1 使用模擬米輪。"
 
 
 class Lsi8181Error(DeviceError):
@@ -123,7 +124,7 @@ class Lsi8181Library:
         if struct.calcsize("P") != 8:
             raise Lsi8181LoadError(f"{DLL_NAME} 需要 64 位元 Python。{_SIMULATOR_HINT}")
         env = os.environ if environ is None else environ
-        explicit = dll_path if dll_path is not None else env.get(DLL_PATH_ENV) or None
+        explicit = dll_path if dll_path is not None else env_value("LSI8181_DLL", env) or None
         if explicit is not None and not Path(explicit).is_file():
             raise Lsi8181LoadError(
                 f"找不到 LSI-8181 DLL：{explicit}。請確認路徑，或以「瀏覽」重新指定。{_SIMULATOR_HINT}"
@@ -150,7 +151,7 @@ def dll_candidates(
     """The paths `Lsi8181Library.load` tries, in order. One source of truth for the diagnostics."""
 
     env = os.environ if environ is None else environ
-    explicit = dll_path if dll_path is not None else env.get(DLL_PATH_ENV) or None
+    explicit = dll_path if dll_path is not None else env_value("LSI8181_DLL", env) or None
     if explicit:
         return (str(Path(explicit)),)
     application_dll = Path(sys.executable).resolve().parent / DLL_NAME
@@ -169,7 +170,7 @@ def _windows_error_text(exc: OSError) -> str:
         # never reach the system search path, so the DLL has to be given by full path.
         return (
             "打包版無法用檔名載入系統 DLL：請以完整路徑指定 LSI8181_64.dll"
-            "（CCD 頁「瀏覽 LSI DLL」，或環境變數 VISIONFLOW_LSI8181_DLL）"
+            "（CCD 頁「瀏覽 LSI DLL」，或環境變數 TILESCOPE_LSI8181_DLL）"
         )
     if code == 126:
         return f"Windows 錯誤 126 找不到指定的模組：{DLL_NAME} 本身或它的相依 DLL 缺少"

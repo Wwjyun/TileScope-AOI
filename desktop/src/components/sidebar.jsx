@@ -15,7 +15,7 @@ export function Sidebar({ nav, screen, setScreen, mode, setMode, rt, sidecarUp, 
         <span className="sb-logo">A</span>
         {!collapsed && (
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="sb-app">VisionFlow AOI</div>
+            <div className="sb-app">TileScope AOI</div>
             <div className="sb-sub">v0.1.0 · Tauri</div>
           </div>
         )}

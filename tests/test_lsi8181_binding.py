@@ -382,7 +382,7 @@ class Lsi8181LoadingTests(unittest.TestCase):
         self.assertIsInstance(devices.meter_wheel, Lsi8181MeterWheel)
         self.assertFalse(availability.available)
         self.assertIn(str(missing), availability.reason)
-        self.assertIn("VISIONFLOW_CCD_SIMULATOR=1", availability.reason)
+        self.assertIn("TILESCOPE_CCD_SIMULATOR=1", availability.reason)
         with self.assertRaises(DeviceError):
             devices.meter_wheel.connect(MeterWheelSettings())
 

@@ -270,7 +270,7 @@ class _FakeRuntime:
 
 class PipelinePatternMatchAdmissionTests(unittest.TestCase):
     def setUp(self):
-        self._directory = tempfile.TemporaryDirectory(prefix="visionflow_admission_")
+        self._directory = tempfile.TemporaryDirectory(prefix="tilescope_admission_")
         self.root = Path(self._directory.name)
         self.pipeline = AOIPipeline(Path("recipes/DEMO.yaml"), self.root / "out")
 

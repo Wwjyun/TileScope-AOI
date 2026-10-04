@@ -369,7 +369,7 @@ class FactoryTests(unittest.TestCase):
             devices.close()
 
     def test_meter_wheel_dll_path_round_trips_through_the_machine_store(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_lsi_") as directory:
+        with tempfile.TemporaryDirectory(prefix="tilescope_lsi_") as directory:
             store = CcdMachineSettingsStore(Path(directory) / "ccd_machine.json")
             store.save(
                 CcdMachineSettings(meter_wheel=MeterWheelSettings(dll_path=r"C:\vendor\LSI8181_64.dll"))
@@ -378,7 +378,7 @@ class FactoryTests(unittest.TestCase):
         self.assertEqual(loaded.meter_wheel.dll_path, r"C:\vendor\LSI8181_64.dll")
 
     def test_the_factory_reads_the_meter_wheel_dll_path_lazily(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_lsi_") as directory:
+        with tempfile.TemporaryDirectory(prefix="tilescope_lsi_") as directory:
             missing = Path(directory) / "LSI8181_64.dll"  # not a real DLL: the path must still be used
             missing.write_bytes(b"")
             devices = create_ccd_devices(
@@ -393,7 +393,7 @@ class FactoryTests(unittest.TestCase):
         self.assertIn(str(missing), availability.reason, "the stored path wins over the environment")
 
     def test_the_factory_falls_back_to_the_search_order_without_a_stored_path(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_lsi_") as directory:
+        with tempfile.TemporaryDirectory(prefix="tilescope_lsi_") as directory:
             devices = create_ccd_devices(
                 {DLL_PATH_ENV: str(Path(directory) / "absent.dll")}, meter_wheel_dll_path=lambda: ""
             )

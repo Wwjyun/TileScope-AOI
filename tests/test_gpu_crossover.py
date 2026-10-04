@@ -155,7 +155,7 @@ class ResidentUploadCrossoverTests(unittest.TestCase):
         session = GpuExecutionSession(runtime, requested=True, config=recipe["gpu"])
         overrides = {key: False for key in ("save_overlay", "save_ng_tiles", "save_csv", "save_matrix_csv", "save_json")}
         reports = []
-        with tempfile.TemporaryDirectory(prefix="visionflow_resident_skip_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_resident_skip_") as temporary:
             image_path = Path(temporary) / "input.png"
             self.assertTrue(cv2.imwrite(str(image_path), np.zeros((600, 600, 3), dtype=np.uint8)))
             for _ in range(3):
@@ -231,7 +231,7 @@ class RealDetectorResidentUploadCrossoverTests(unittest.TestCase):
         import tempfile
 
         runtime, dll = self._resident_runtime(cuda_ms=0.30, cpu_ms=0.02)
-        with tempfile.TemporaryDirectory(prefix="visionflow_real_skip_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_real_skip_") as temporary:
             reports, detectors = self._run_pipeline(temporary, runtime, shapes=((512, 512),) * 4)
 
         # Image 1 runs the warm-up CUDA call and image 2 the measured CPU calibration sample; image 3
@@ -261,7 +261,7 @@ class RealDetectorResidentUploadCrossoverTests(unittest.TestCase):
         import tempfile
 
         runtime, dll = self._resident_runtime(cuda_ms=0.05, cpu_ms=2.0)
-        with tempfile.TemporaryDirectory(prefix="visionflow_real_cuda_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_real_cuda_") as temporary:
             reports, detectors = self._run_pipeline(temporary, runtime)
 
         resident = [report["execution"]["gpu"]["resident_image"] for report in reports]
@@ -278,7 +278,7 @@ class RealDetectorResidentUploadCrossoverTests(unittest.TestCase):
         import tempfile
 
         runtime, dll = self._resident_runtime(cuda_ms=0.30, cpu_ms=0.02)
-        with tempfile.TemporaryDirectory(prefix="visionflow_real_shape_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_real_shape_") as temporary:
             reports, detectors = self._run_pipeline(
                 temporary, runtime, shapes=((512, 512),) * 3 + ((512, 480),) + ((512, 512),)
             )

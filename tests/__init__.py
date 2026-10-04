@@ -16,10 +16,10 @@ import os
 import tempfile
 from pathlib import Path
 
-_ABSENT_HARDWARE_ROOT = Path(tempfile.gettempdir()) / "visionflow-absent-ccd-hardware"
+_ABSENT_HARDWARE_ROOT = Path(tempfile.gettempdir()) / "tilescope-absent-ccd-hardware"
 
 for _variable, _file_name in (
-    ("VISIONFLOW_LSI8181_DLL", "LSI8181_64.dll"),
-    ("VISIONFLOW_SAPERA_DLL", "DALSA.SaperaLT.SapClassBasic.dll"),
+    ("TILESCOPE_LSI8181_DLL", "LSI8181_64.dll"),
+    ("TILESCOPE_SAPERA_DLL", "DALSA.SaperaLT.SapClassBasic.dll"),
 ):
     os.environ[_variable] = str(_ABSENT_HARDWARE_ROOT / _file_name)

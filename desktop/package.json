@@ -1,9 +1,9 @@
 {
-  "name": "visionflow-aoi-desktop",
+  "name": "tilescope-aoi-desktop",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "VisionFlow AOI Desktop — Tauri 2 shell (Rust host + React frontend) for the Python sidecar GUI",
+  "description": "TileScope AOI Desktop — Tauri 2 shell (Rust host + React frontend) for the Python sidecar GUI",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

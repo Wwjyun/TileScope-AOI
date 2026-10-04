@@ -313,7 +313,7 @@ class PatternGridBatchWindow(QWidget):
         self.setWindowTitle("Pattern 定位固定網格批量切圖")
         self.resize(760, 720)
         self.setMinimumSize(680, 650)
-        self.settings = settings or QSettings("VisionFlow", "PatternGridBatchTool")
+        self.settings = settings or QSettings("TileScope", "PatternGridBatchTool")
         self._thread: QThread | None = None
         self._worker: BatchCropWorker | None = None
         self._loaded_recipe_path: Path | None = None

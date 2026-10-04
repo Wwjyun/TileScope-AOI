@@ -134,7 +134,7 @@ def main() -> int:
 
     failures = 0
     try:
-        with tempfile.TemporaryDirectory(prefix="visionflow_pattern_fft_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_pattern_fft_") as temporary:
             for name, frame_shape, template_shape, seed in cases:
                 image, template, planted = build_case(frame_shape, template_shape, seed)
                 template_path = Path(temporary) / f"template_{seed}.png"

@@ -523,7 +523,7 @@ class CcdGuiTests(unittest.TestCase):
 
     def test_default_window_without_camera_backend_starts_and_explains(self):
         missing_dll = str(self.root / "LSI8181_64.dll")
-        with patch.dict(os.environ, {"VISIONFLOW_LSI8181_DLL": missing_dll}):
+        with patch.dict(os.environ, {"TILESCOPE_LSI8181_DLL": missing_dll}):
             window = MainWindow(settings=QSettings(str(self.root / "default.ini"), QSettings.Format.IniFormat))
         self.addCleanup(window.deleteLater)
         self.addCleanup(window._inspection_gpu_sessions.close)

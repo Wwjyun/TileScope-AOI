@@ -145,7 +145,7 @@ class YoloXRegistryAndSessionTests(unittest.TestCase):
         self.assertEqual(manager.session_count, 0)
 
     def test_registry_rejects_checksum_mismatch(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_yolox_registry_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_yolox_registry_") as temporary:
             root = Path(temporary)
             (root / "fixture.onnx").write_bytes(
                 (MODEL_ROOT / "yolox_tiny_fixture.onnx").read_bytes()
@@ -594,7 +594,7 @@ class DetectorYoloXIntegrationTests(unittest.TestCase):
         with self.assertRaisesRegex(RecipeError, "找不到 YOLOX model_id"):
             RecipeManager().validate(invalid)
 
-        with tempfile.TemporaryDirectory(prefix="visionflow_yolox_pipeline_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_yolox_pipeline_") as temporary:
             root = Path(temporary)
             image_path = root / "input.png"
             write_png(image_path, np.zeros((32, 32, 3), dtype=np.uint8))
@@ -619,7 +619,7 @@ class DetectorYoloXIntegrationTests(unittest.TestCase):
             "save_matrix_csv": False,
             "save_json": False,
         }
-        with tempfile.TemporaryDirectory(prefix="visionflow_yolox_modes_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_yolox_modes_") as temporary:
             root = Path(temporary)
             input_dir = root / "input"
             input_dir.mkdir()
@@ -673,7 +673,7 @@ class DetectorYoloXIntegrationTests(unittest.TestCase):
         recipe["gpu"]["fallback_to_cpu"] = True
         recipe["detectors"]["demo12"]["use_gpu"] = True
         recipe["detectors"]["demo12"]["params"]["inference_backend"] = "auto"
-        with tempfile.TemporaryDirectory(prefix="visionflow_yolox_fallback_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_yolox_fallback_") as temporary:
             root = Path(temporary)
             recipe_path = root / "recipe.yaml"
             recipe_path.write_text(
@@ -718,7 +718,7 @@ class DetectorYoloXIntegrationTests(unittest.TestCase):
         recipe["gpu"]["mode"] = "auto"
         recipe["detectors"]["demo12"]["use_gpu"] = True
         recipe["detectors"]["demo12"]["params"]["inference_backend"] = "auto"
-        with tempfile.TemporaryDirectory(prefix="visionflow_yolox_cuda_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_yolox_cuda_") as temporary:
             root = Path(temporary)
             recipe_path = root / "recipe.yaml"
             recipe_path.write_text(
@@ -745,7 +745,7 @@ class DetectorYoloXIntegrationTests(unittest.TestCase):
         recipe["gpu"]["fallback_to_cpu"] = False
         recipe["detectors"]["demo12"]["use_gpu"] = True
         recipe["detectors"]["demo12"]["params"]["inference_backend"] = "auto"
-        with tempfile.TemporaryDirectory(prefix="visionflow_yolox_strict_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_yolox_strict_") as temporary:
             root = Path(temporary)
             recipe_path = root / "recipe.yaml"
             recipe_path.write_text(

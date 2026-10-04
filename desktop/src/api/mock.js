@@ -344,7 +344,7 @@ export async function saveFile() {
 }
 
 export async function info() {
-  return { state: runtime.sidecar === "offline" ? "offline" : "ready", pid: runtime.pid, launch: "python", command: "python -m aoi_sidecar", log_dir: "C:/Users/…/AppData/Local/VisionFlowAOI/logs" };
+  return { state: runtime.sidecar === "offline" ? "offline" : "ready", pid: runtime.pid, launch: "python", command: "python -m aoi_sidecar", log_dir: "C:/Users/…/AppData/Local/TileScopeAOI/logs" };
 }
 
 export async function restart() {

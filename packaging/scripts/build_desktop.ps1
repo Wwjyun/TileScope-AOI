@@ -3,7 +3,7 @@ param(
     [Parameter()][ValidateSet('offlineInstaller', 'embedBootstrapper', 'downloadBootstrapper')][string]$WebView2Mode = "offlineInstaller",
     [Parameter()][switch]$SkipNpmInstall,
     [Parameter()][switch]$SkipEnvironmentCheck,
-    [Parameter()][string]$StagingRoot = "C:\Users\Public\VisionFlowAOI-desktop-build"
+    [Parameter()][string]$StagingRoot = "C:\Users\Public\TileScopeAOI-desktop-build"
 )
 
 $ErrorActionPreference = "Stop"
@@ -86,7 +86,7 @@ try {
         PythonPath = $python
         SpecPath = $spec
         VersionInfoPath = (Join-Path $RepoRoot "build\version_info\aoi-sidecar.txt")
-        ProductName = "VisionFlow AOI Sidecar"
+        ProductName = "TileScope AOI Sidecar"
         ExecutableName = "aoi-sidecar.exe"
         Version = $Version
         SkipEnvironmentCheck = [bool]$SkipEnvironmentCheck
@@ -195,7 +195,7 @@ if (-not $setup) {
 }
 $distDesktop = Join-Path $RepoRoot "dist\desktop"
 New-Item -ItemType Directory -Force -Path $distDesktop | Out-Null
-$installerName = "VisionFlow-AOI-Desktop-$Version-setup.exe"
+$installerName = "TileScope-AOI-$Version-setup.exe"
 $installerPath = Join-Path $distDesktop $installerName
 Copy-Item -LiteralPath $setup.FullName -Destination $installerPath -Force
 $installerSize = (Get-Item -LiteralPath $installerPath).Length

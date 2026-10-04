@@ -14,9 +14,9 @@ Deliberate deviations from the C# reference, all reported to the operator:
 
 * ``MeterWheelMultipleRate`` outside ``0``/``1``/``2`` warns instead of being silently reset to X4.
 * ``TriggerMode=SingleFrame`` is not ported (Todo P11 "已確認決策"), so the mode stays ``Continuous``.
-* An absent key keeps the VisionFlow value-object default; only a key that is present with an
+* An absent key keeps the TileScope AOI value-object default; only a key that is present with an
   unparsable value keeps the C# parse fallback. ``ImageSaveFormat`` is the single imported key where
-  the two differ (C# ``Png`` vs VisionFlow ``Bmp``, the production handoff format), so an ini that
+  the two differ (C# ``Png`` vs TileScope AOI ``Bmp``, the production handoff format), so an ini that
   does not mention it imports as ``BMP`` and an unparsable one imports as ``PNG`` with a warning
   that names both.
 * ``InternalLineRate`` is a decimal in C# but ``internal_line_rate_hz`` is an integer, so a
@@ -37,6 +37,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+from core.env_names import env_value
 from devices.ccd_models import (
     EXTENSION_CHANNEL_COUNT,
     AcquisitionSettings,
@@ -54,12 +55,12 @@ from devices.ccd_models import (
 
 IMPORT_SCHEMA = "visionflow-ccd-settings-import/v1"
 SETTINGS_FILE_NAME = "settings.ini"
-SETTINGS_PATH_ENV = "VISIONFLOW_CCD_SETTINGS_INI"
+SETTINGS_PATH_ENV = "TILESCOPE_CCD_SETTINGS_INI"
 
-# Keys the C# app persists that VisionFlow deliberately does not import. Each present key produces
+# Keys the C# app persists that TileScope AOI deliberately does not import. Each present key produces
 # exactly one warning naming the key and the reason, so nothing is dropped silently.
 UNPORTED_KEYS = (
-    ("CameraName", "相機名稱由 Sapera 連線時的 server／resource 決定，VisionFlow 不另存名稱。"),
+    ("CameraName", "相機名稱由 Sapera 連線時的 server／resource 決定，TileScope AOI 不另存名稱。"),
     ("ServerIndex", "Sapera 位置以 ServerName 與 ResourceIndex 表示，不使用 ServerIndex。"),
     ("DeviceFeatureConfigFilePath", "DeviceFeature 不使用 CCF 檔，只有 ConfigFilePath 會匯入。"),
     ("Width", "影像寬度由相機 buffer 決定，不存入設定。"),
@@ -69,9 +70,9 @@ UNPORTED_KEYS = (
     ("RollingCaptureDirection", "滾動式拍照已列為暫不移植。"),
     ("FrameRate", "線掃相機的取像速率由 InternalLineRate 決定，FrameRate 只用於面掃相機。"),
     ("PixelFormat", "像素格式固定為 Mono8，由相機 buffer 決定。"),
-    ("AutoConnect", "VisionFlow 不自動連線相機，連線由 CCD 頁面操作。"),
+    ("AutoConnect", "TileScope AOI 不自動連線相機，連線由 CCD 頁面操作。"),
     ("AutoSave", "自動存圖改由 AutoSaveOnExternalTriggerOneFrame 與 AutoSaveOnSoftwareTriggerFrame 決定。"),
-    ("FileNamePattern", "檔名由 VisionFlow 的存圖規則決定，不沿用 C# 的樣式。"),
+    ("FileNamePattern", "檔名由 TileScope AOI 的存圖規則決定，不沿用 C# 的樣式。"),
 )
 _UNPORTED_REASONS = dict(UNPORTED_KEYS)
 
@@ -94,7 +95,7 @@ _TRIGGER_MODES: dict[str, Any] = {
     "externaltrigger": TriggerMode.EXTERNAL,
     "softwaretrigger": TriggerMode.SOFTWARE,
     "singleframe": _SINGLE_FRAME,
-    # VisionFlow value aliases, accepted for hand-written files.
+    # TileScope AOI value aliases, accepted for hand-written files.
     "external_trigger": TriggerMode.EXTERNAL,
     "software_trigger": TriggerMode.SOFTWARE,
 }
@@ -281,7 +282,7 @@ def parse_ccd_settings_ini(text: str, *, source: str = "<memory>") -> ImportedCc
         return value
 
     def get_image_format(key: str) -> ImageSaveFormat:
-        """An absent key keeps the VisionFlow default; an unparsable one keeps the C# default."""
+        """An absent key keeps the TileScope AOI default; an unparsable one keeps the C# default."""
         nonlocal seen_imported
         if not present(key):
             return SaveSettings().image_format
@@ -291,7 +292,7 @@ def parse_ccd_settings_ini(text: str, *, source: str = "<memory>") -> ImportedCc
         if value is None:
             note(
                 f"設定值 {key}={raw!r} 無法解析為存圖格式，"
-                f"已沿用 C# 預設值 {_display(_C_SHARP_IMAGE_SAVE_FORMAT)}（VisionFlow 預設為 Bmp）。"
+                f"已沿用 C# 預設值 {_display(_C_SHARP_IMAGE_SAVE_FORMAT)}（TileScope AOI 預設為 Bmp）。"
             )
             return _C_SHARP_IMAGE_SAVE_FORMAT
         parsed[key] = value
@@ -499,7 +500,7 @@ def parse_ccd_settings_ini(text: str, *, source: str = "<memory>") -> ImportedCc
         )
 
     if not seen_imported:
-        note("設定檔沒有 VisionFlow 可匯入的設定，已全部使用預設值。")
+        note("設定檔沒有 TileScope AOI 可匯入的設定，已全部使用預設值。")
 
     return ImportedCcdSettings(
         machine=machine,
@@ -513,13 +514,13 @@ def import_ccd_settings_ini(path, environ: Mapping[str, str] | None = None) -> I
     """Read a `settings.ini` and convert it into machine-level and product-level CCD settings.
 
     `path` accepts a `str`, an `os.PathLike` or a directory holding `settings.ini`. An empty path
-    falls back to `VISIONFLOW_CCD_SETTINGS_INI` from `environ` (default `os.environ`); an explicit
+    falls back to `TILESCOPE_CCD_SETTINGS_INI` from `environ` (default `os.environ`); an explicit
     path always wins. A missing or non-UTF-8 file raises :class:`CcdSettingsImportError`.
     """
     environment = os.environ if environ is None else environ
     candidate = str(path).strip() if path is not None else ""
     if not candidate:
-        candidate = str(environment.get(SETTINGS_PATH_ENV, "") or "").strip()
+        candidate = str(env_value("CCD_SETTINGS_INI", environment) or "").strip()
     if not candidate:
         raise CcdSettingsImportError(
             f"沒有指定 CCD 設定檔路徑，請選擇 settings.ini 或以環境變數 {SETTINGS_PATH_ENV} 指定。"

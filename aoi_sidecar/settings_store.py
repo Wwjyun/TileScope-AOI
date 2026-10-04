@@ -1,6 +1,8 @@
-"""JSON settings file for the desktop GUI, default ``%APPDATA%\\VisionFlowAOI\\desktop_settings.json``.
+"""JSON settings file for the desktop GUI, default ``%APPDATA%\\TileScopeAOI\\desktop_settings.json``.
 
 Reads are safe against missing files and stale/partial JSON; writes are atomic (temp + replace).
+The first read migrates a legacy ``%APPDATA%\\VisionFlowAOI\\desktop_settings.json`` into the new
+location once, so existing desktop users keep their settings across the rename.
 """
 
 from __future__ import annotations
@@ -30,6 +32,9 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "last_screen": "run",
 }
 
+# The renamed PySide6 GUI writes its QSettings to ``Software\\TileScope\\AOI``; the historical
+# ``Software\\VisionFlow\\AOI`` store remains readable so one-shot migration keeps working.
+NEW_REGISTRY_KEY = r"Software\TileScope\AOI"
 LEGACY_REGISTRY_KEY = r"Software\VisionFlow\AOI"
 
 # Registry value name -> (settings key, coercion kind).
@@ -50,6 +55,12 @@ def settings_path() -> Path:
     env = os.environ.get("AOI_SIDECAR_SETTINGS_PATH")
     if env:
         return Path(env)
+    base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    return Path(base) / "TileScopeAOI" / "desktop_settings.json"
+
+
+def legacy_settings_path() -> Path:
+    """The pre-rename settings file location, read once for migration."""
     base = os.environ.get("APPDATA") or os.path.expanduser("~")
     return Path(base) / "VisionFlowAOI" / "desktop_settings.json"
 
@@ -77,9 +88,30 @@ def _load(path: Path) -> dict:
 
 
 def read_settings(path: Path | None = None) -> dict:
-    """Defaults deep-merged with the on-disk file; missing/stale values are read safely."""
-    path = path or settings_path()
+    """Defaults deep-merged with the on-disk file; missing/stale values are read safely.
+
+    When ``path`` is omitted, a legacy ``VisionFlowAOI`` settings file is migrated into the new
+    location once before reading, so the rename does not drop an existing user's settings.
+    """
+    if path is None:
+        path = settings_path()
+        migrate_legacy_settings_file(path)
     return _deep_merge(DEFAULT_SETTINGS, _load(path))
+
+
+def migrate_legacy_settings_file(path: Path | None = None, legacy: Path | None = None) -> bool:
+    """Copy the legacy ``VisionFlowAOI`` settings file into ``path`` once (new file absent)."""
+    path = path or settings_path()
+    if path.exists():
+        return False
+    legacy = legacy or legacy_settings_path()
+    if not legacy.exists():
+        return False
+    data = _load(legacy)
+    if not data:
+        return False
+    write_settings(data, path=path)
+    return True
 
 
 def write_settings(patch: Mapping, path: Path | None = None) -> dict:
@@ -129,9 +161,17 @@ def read_registry_values(key: str = LEGACY_REGISTRY_KEY) -> dict[str, Any]:
     return result
 
 
+def _merged_registry_values() -> dict[str, Any]:
+    """Read the new registry key first, then fill gaps from the legacy ``VisionFlow\\AOI`` key."""
+    values = dict(read_registry_values(NEW_REGISTRY_KEY))
+    for name, value in read_registry_values(LEGACY_REGISTRY_KEY).items():
+        values.setdefault(name, value)
+    return values
+
+
 def import_legacy_settings(reader: Callable[[], Mapping[str, Any]] | None = None, path: Path | None = None) -> dict:
     """Map known PySide6 QSettings keys into the settings file; return ``{imported: [keys]}``."""
-    reader = reader or (lambda: read_registry_values(LEGACY_REGISTRY_KEY))
+    reader = reader or _merged_registry_values
     values = dict(reader() or {})
     patch: dict[str, Any] = {}
     imported: list[str] = []

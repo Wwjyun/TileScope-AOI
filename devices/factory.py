@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from core.env_names import env_value
 from devices.error_codes import ensure_tag
 from devices.advantech_dio import AdvantechDigitalIo
 from devices.ccd_models import (
@@ -35,13 +36,13 @@ from devices.sapera_camera import SaperaLineScanCamera
 from devices.serial_light import DotNetSerialLight
 from devices.simulated import SimulatedDigitalIo, SimulatedLight, SimulatedLineScanCamera, SimulatedMeterWheel
 
-SIMULATOR_ENV = "VISIONFLOW_CCD_SIMULATOR"
+SIMULATOR_ENV = "TILESCOPE_CCD_SIMULATOR"
 
 
 def camera_unavailable_reason(environ: Mapping[str, str]) -> str:
     """Operator-facing reason naming the copyable error code and the overrides to set."""
 
-    explicit = str(environ.get(DLL_PATH_ENV) or "")
+    explicit = str(env_value("SAPERA_DLL", environ) or "")
     search = locate_assembly(environ=environ)
     if explicit:
         detail = f"E-0201 {DLL_PATH_ENV}={explicit} 不存在"
@@ -245,7 +246,7 @@ def create_ccd_devices(
     dio_assembly_path: str | Callable[[], str] | None = None,
 ) -> CcdDevices:
     env = os.environ if environ is None else environ
-    if str(env.get(SIMULATOR_ENV, "")).strip().lower() in {"1", "true", "yes", "on"}:
+    if str(env_value("CCD_SIMULATOR", env) or "").strip().lower() in {"1", "true", "yes", "on"}:
         return CcdDevices(SimulatedLineScanCamera(), SimulatedMeterWheel(auto_advance_per_read=25), SimulatedDigitalIo(), SimulatedLight())
     # The LSI-8181 DLL is loaded lazily; a missing driver only makes the meter wheel unavailable.
     # `meter_wheel_dll_path` may be a callable so the machine settings store stays the single source

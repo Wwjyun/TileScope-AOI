@@ -26,7 +26,7 @@ from devices.sapera_api import (
     ACQ_CAPABILITIES,
     ACQ_PARAMETERS,
     ACQ_VALUES,
-    DLL_PATH_ENV as VISIONFLOW_SAPERA_DLL,
+    DLL_PATH_ENV as TILESCOPE_SAPERA_DLL,
     BufferFormat,
     SaperaError,
     SaperaRuntime,
@@ -364,7 +364,7 @@ class DiagnoseHarness(unittest.TestCase):
     """Shared hardware-free fixture: temp Sapera root, temp CCF and a fake runtime/interop pair."""
 
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory(prefix="visionflow_sapera_diagnose_")
+        self._tmp = tempfile.TemporaryDirectory(prefix="tilescope_sapera_diagnose_")
         self.addCleanup(self._tmp.cleanup)
         self.root = Path(self._tmp.name)
         self.sapera_dir = self.root / "Sapera"
@@ -524,7 +524,7 @@ class LoadFailureTests(DiagnoseHarness):
     def test_dll_env_path_that_does_not_exist_fails_s1_with_e_0201(self):
         report = run_sapera_diagnose(
             runtime_loader=lambda: self.runtime,
-            environ=self.environ(VISIONFLOW_SAPERA_DLL=str(self.root / "missing" / "SapClassBasic.dll")),
+            environ=self.environ(TILESCOPE_SAPERA_DLL=str(self.root / "missing" / "SapClassBasic.dll")),
             connection=self.connection(),
             log_dir=self.log_dir,
             clock=FrozenDatetime(),
@@ -539,7 +539,7 @@ class LoadFailureTests(DiagnoseHarness):
         fake_dll.write_bytes(fake_pe_bytes("8.60.0.2120"))
         report = run_sapera_diagnose(
             runtime_loader=lambda: self.runtime,
-            environ=self.environ(VISIONFLOW_SAPERA_DLL=str(fake_dll)),
+            environ=self.environ(TILESCOPE_SAPERA_DLL=str(fake_dll)),
             connection=self.connection(),
             log_dir=self.log_dir,
             clock=FrozenDatetime(),
@@ -795,7 +795,7 @@ class NumericShortCodeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             report = run_sapera_diagnose(
                 runtime_loader=lambda: (_ for _ in ()).throw(SaperaError("E-0202", "載入失敗")),
-                environ={VISIONFLOW_SAPERA_DLL: "does-not-exist"},
+                environ={TILESCOPE_SAPERA_DLL: "does-not-exist"},
                 log_dir=Path(directory),
                 clock=lambda: STAMP,
             )
@@ -874,7 +874,7 @@ class CliDispatchTests(unittest.TestCase):
     """`main.py --sapera-diagnose`: patch the runner; no GUI and no real Sapera are launched."""
 
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory(prefix="visionflow_sapera_cli_", ignore_cleanup_errors=True)
+        self._tmp = tempfile.TemporaryDirectory(prefix="tilescope_sapera_cli_", ignore_cleanup_errors=True)
         self.addCleanup(self._tmp.cleanup)
         self._cwd = contextlib.chdir(self._tmp.name)
         self._cwd.__enter__()

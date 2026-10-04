@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 
+from core.env_names import env_value
 from devices.ccd_models import (
     AcquisitionSettings,
     CameraConnectionSettings,
@@ -504,7 +505,7 @@ class _ObjectState:
 def _step_s1(context: _Context, state: _RuntimeState, environ) -> tuple[str, str]:
     """S1: the machine's Sapera install and version, without .NET (pythonnet is S2's problem)."""
 
-    configured = _env_value(environ, DLL_PATH_ENV)
+    configured = env_value("SAPERA_DLL", environ)
     search = locate_assembly(environ=environ)
     state.assembly_path = Path(search.chosen) if search.chosen else None
     context.add(f"檢查路徑：{'；'.join(search.checked) or '（無）'}")
@@ -895,7 +896,7 @@ def _steps_payload(steps: tuple[DiagnoseStep, ...]) -> list[dict]:
 
 def _text_report(step_payload: list[dict], context: _Context, versions: SaperaVersions, stamp: str, summary: str) -> str:
     lines = [
-        "VisionFlow AOI Sapera 現場診斷報告",
+        "TileScope AOI Sapera 現場診斷報告",
         f"時間：{stamp}",
         f"總結：{summary}",
         f"managed：{versions.assembly_file_version or versions.assembly_version or '未知'}",

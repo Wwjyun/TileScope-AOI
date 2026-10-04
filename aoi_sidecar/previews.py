@@ -20,7 +20,7 @@ def cache_dir() -> Path:
     if env:
         return Path(env)
     base = os.environ.get("LOCALAPPDATA") or os.environ.get("TEMP") or os.path.expanduser("~")
-    return Path(base) / "VisionFlowAOI" / "cache" / "previews"
+    return Path(base) / "TileScopeAOI" / "cache" / "previews"
 
 
 def _file_key(path: Path) -> str:

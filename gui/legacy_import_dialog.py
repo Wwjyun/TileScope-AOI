@@ -30,12 +30,12 @@ from gui.theme import COLORS
 
 # ============================================================
 # 從原機台程式匯入：確認表。
-# 列出從原程式追到的每個值、VisionFlow 目前的值、狀態與出處。只有「可套用」預設勾選；
+# 列出從原程式追到的每個值、TileScope AOI 目前的值、狀態與出處。只有「可套用」預設勾選；
 # 「可能只是預設值」可手動勾選；衝突、無法判定、注意與參考只供查看。套用由 CcdController
 # 以既有的設定路徑完成，這個對話框不寫任何設定。
 # ============================================================
 
-COLUMNS = ("套用", "項目", "原程式的值", "VisionFlow 目前", "狀態", "出處")
+COLUMNS = ("套用", "項目", "原程式的值", "TileScope AOI 目前", "狀態", "出處")
 STATUS_COLORS = {
     STATUS_READY: "pass",
     STATUS_PARTIAL: "warn",
@@ -75,7 +75,7 @@ class LegacyImportDialog(QDialog):
             self._add_row(finding, current.get(finding.key, ""))
         layout.addWidget(self.table, 1)
 
-        self.empty_label = QLabel("原程式裡沒有找到 VisionFlow 需要的設定（LSI8181、DeviceInformation、ReadBit／WriteBit、.ccf 等）。")
+        self.empty_label = QLabel("原程式裡沒有找到 TileScope AOI 需要的設定（LSI8181、DeviceInformation、ReadBit／WriteBit、.ccf 等）。")
         self.empty_label.setVisible(not report.findings)
         layout.addWidget(self.empty_label)
 

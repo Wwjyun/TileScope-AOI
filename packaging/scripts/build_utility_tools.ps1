@@ -25,7 +25,7 @@ foreach ($buildScript in $buildScripts) {
     & $scriptPath
 }
 
-$bundleName = "VisionFlow-Utility-Tools-v$Version-windows-x64"
+$bundleName = "TileScope-Utility-Tools-v$Version-windows-x64"
 $bundleRoot = Join-Path $RepoRoot "dist\$bundleName"
 $releaseRoot = Join-Path $RepoRoot "release_artifacts"
 $zipPath = Join-Path $releaseRoot "$bundleName.zip"

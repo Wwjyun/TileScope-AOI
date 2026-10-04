@@ -1,4 +1,4 @@
-// VisionFlow AOI Desktop — Tauri 2 host library.
+// TileScope AOI Desktop — Tauri 2 host library.
 // Owns the Python sidecar process, exposes JSON-RPC commands to the React
 // frontend, and re-emits sidecar events on the event bus.
 
@@ -84,7 +84,7 @@ pub fn run() {
             let cache = cache_dir();
             let _ = std::fs::create_dir_all(&cache);
             let _ = app.asset_protocol_scope().allow_directory(&cache, true);
-            sidecar::log_host("VisionFlow AOI Desktop started");
+            sidecar::log_host("TileScope AOI Desktop started");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -95,7 +95,7 @@ pub fn run() {
             allow_asset_dir
         ])
         .build(tauri::generate_context!())
-        .expect("error while building VisionFlow AOI Desktop")
+        .expect("error while building TileScope AOI Desktop")
         .run(|app_handle, event| match event {
             tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit => {
                 if let Some(sidecar) = app_handle.try_state::<Arc<Sidecar>>() {

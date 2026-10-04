@@ -3,7 +3,7 @@ NG Tile 面積分類小工具 v1.0.0
 
 用途
 ----
-依 VisionFlow AOI 缺陷 CSV 的 area 欄位，自動分類 ng_tiles 圖片。
+依 TileScope AOI 缺陷 CSV 的 area 欄位，自動分類 ng_tiles 圖片。
 
 使用方式
 --------

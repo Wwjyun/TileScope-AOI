@@ -18,7 +18,7 @@ from tools.export_tile_defect_distribution import (
 
 class TileDefectDistributionTests(unittest.TestCase):
     def test_aggregates_summary_rows_by_tile_and_renders_heatmap(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_tile_distribution_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_tile_distribution_") as temporary:
             summary_path = self._write_summary(
                 Path(temporary) / "run" / "csv" / "summary.csv",
                 [
@@ -67,7 +67,7 @@ class TileDefectDistributionTests(unittest.TestCase):
             self.assertIn("NG 率＝NG 次數 ÷ 檢測次數", report)
 
     def test_handles_missing_tile_id_and_escapes_report_values(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_tile_distribution_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_tile_distribution_") as temporary:
             summary_path = self._write_summary(
                 Path(temporary) / "summary.csv",
                 [
@@ -85,7 +85,7 @@ class TileDefectDistributionTests(unittest.TestCase):
             self.assertIn("未提供 tile_id", report)
 
     def test_normalizes_optional_numbers_and_legacy_area_unit(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_tile_distribution_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_tile_distribution_") as temporary:
             summary_path = self._write_summary(
                 Path(temporary) / "summary.csv",
                 [
@@ -105,7 +105,7 @@ class TileDefectDistributionTests(unittest.TestCase):
             self.assertEqual(distribution.invalid_score_rows, 1)
 
     def test_json_tile_denominator_can_derive_result_and_is_script_safe(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_tile_distribution_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_tile_distribution_") as temporary:
             root = Path(temporary) / "run"
             summary_path = self._write_summary(
                 root / "csv" / "summary.csv",
@@ -136,7 +136,7 @@ class TileDefectDistributionTests(unittest.TestCase):
             self.assertIn("\\u003c/script\\u003e\\u003cb\\u003e", report)
 
     def test_empty_summary_still_creates_a_readable_html_report(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_tile_distribution_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_tile_distribution_") as temporary:
             summary_path = self._write_summary(Path(temporary) / "summary.csv", [])
 
             output_path, distribution = export_html_report(summary_path)
@@ -146,7 +146,7 @@ class TileDefectDistributionTests(unittest.TestCase):
             self.assertIn("沒有缺陷資料列", output_path.read_text(encoding="utf-8"))
 
     def test_rejects_non_aoi_csv_and_can_run_in_cli_mode(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_tile_distribution_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_tile_distribution_") as temporary:
             root = Path(temporary)
             invalid = root / "invalid.csv"
             invalid.write_text("image_name,area\na.png,10\n", encoding="utf-8")

@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    visionflow_aoi_desktop_lib::run()
+    tilescope_aoi_desktop_lib::run()
 }

@@ -492,7 +492,7 @@ class ProvenanceAndDatasetTests(unittest.TestCase):
         )
 
     def test_pipeline_writes_ng_tile_image_and_review_sidecar(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_sidecar_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_sidecar_") as temporary:
             root = Path(temporary)
             image = np.full((512, 512, 3), 255, np.uint8)
             cv2.rectangle(image, (220, 220), (260, 250), (0, 0, 0), -1)

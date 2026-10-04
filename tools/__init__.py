@@ -1,1 +1,1 @@
-"""Standalone VisionFlow utility tools."""
+"""Standalone TileScope AOI utility tools."""

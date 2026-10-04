@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
+from core.env_names import env_value
 from devices.ccd_models import (
     ACQUISITION_EVENT_FRAME_TRIGGER_TOO_SLOW,
     ACQUISITION_EVENT_LINE_TRIGGER_TOO_FAST,
@@ -36,7 +37,7 @@ LOGGER = logging.getLogger(__name__)
 
 SAPERA_NAMESPACE = "DALSA.SaperaLT.SapClassBasic"
 ASSEMBLY_FILE_NAME = f"{SAPERA_NAMESPACE}.dll"
-DLL_PATH_ENV = "VISIONFLOW_SAPERA_DLL"
+DLL_PATH_ENV = "TILESCOPE_SAPERA_DLL"
 SAPERADIR_ENV = "SAPERADIR"
 DEFAULT_SAPERA_DIR = r"C:\Program Files\Teledyne DALSA\Sapera"
 KNOWN_ASSEMBLY_SUBPATHS = (
@@ -560,7 +561,7 @@ def locate_assembly(
     """Find the machine's SapClassBasic.dll without guessing a version: explicit path, then SAPERADIR."""
 
     env = os.environ if environ is None else environ
-    explicit = dll_path if dll_path is not None else (env.get(DLL_PATH_ENV) or None)
+    explicit = dll_path if dll_path is not None else (env_value("SAPERA_DLL", env) or None)
     if explicit is not None:
         path = str(Path(explicit))
         return AssemblySearch(None, (path,), (path,) if Path(path).is_file() else ())
@@ -620,7 +621,7 @@ def ensure_dotnet_runtime() -> None:
     """Load pythonnet on the .NET Framework runtime once per process (Sapera .NET targets netfx)."""
 
     if struct.calcsize("P") != 8:
-        raise SaperaError("E-0103", "Sapera LT x64 需要 64 位元 Python／VisionFlow。")
+        raise SaperaError("E-0103", "Sapera LT x64 需要 64 位元 Python／TileScope AOI。")
     try:
         import pythonnet  # noqa: PLC0415
     except ImportError as exc:
@@ -663,7 +664,7 @@ def load_runtime(
     # or the .NET runtime at all, so startup stays cheap and a missing pythonnet is not reported as
     # a missing camera installation.
     search = locate_assembly(dll_path, env, default_sapera_dir=default_sapera_dir)
-    if dll_path is None and not env.get(DLL_PATH_ENV) and search.sapera_dir is None:
+    if dll_path is None and not env_value("SAPERA_DLL", env) and search.sapera_dir is None:
         raise SaperaError("E-0104", f"未設定 {SAPERADIR_ENV}，且 {default_sapera_dir} 不存在；請確認已安裝 Sapera LT。")
     if search.chosen is None:
         raise SaperaError("E-0201", "已檢查：" + "；".join(search.checked))

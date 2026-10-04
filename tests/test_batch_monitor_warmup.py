@@ -101,7 +101,7 @@ class SessionWarmUpBeforeRunTests(unittest.TestCase):
 
     def test_missing_sample_image_falls_back_to_context_only(self):
         session = _real_session()
-        with tempfile.TemporaryDirectory(prefix="visionflow_warmup_missing_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_warmup_missing_") as temporary:
             missing = Path(temporary) / "gone.bmp"
             with patch.object(session, "warm_up", wraps=session.warm_up) as warm_up:
                 summary = session.warm_up_before_run(Path("recipe.yaml"), missing)
@@ -112,7 +112,7 @@ class SessionWarmUpBeforeRunTests(unittest.TestCase):
 
 class MonitorWarmupTests(unittest.TestCase):
     def _run(self, session, events, warmup_image=True):
-        with tempfile.TemporaryDirectory(prefix="visionflow_monitor_warmup_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_monitor_warmup_") as temporary:
             root = Path(temporary)
             watch = root / "watch"
             watch.mkdir()
@@ -177,7 +177,7 @@ class MonitorWarmupTests(unittest.TestCase):
 
 class BatchWarmupTests(unittest.TestCase):
     def _run(self, session, events, images=2):
-        with tempfile.TemporaryDirectory(prefix="visionflow_batch_warmup_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_batch_warmup_") as temporary:
             root = Path(temporary)
             paths = [root / f"image{index}.png" for index in range(images)]
             progress = []
@@ -246,7 +246,7 @@ class BatchWarmupTests(unittest.TestCase):
         self.assertNotIn("gpu_warmup", result)
 
     def test_batch_cancellation_finishes_current_image_and_marks_pending_images(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_batch_cancel_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_batch_cancel_") as temporary:
             root = Path(temporary)
             images = [root / f"image{index}.png" for index in range(3)]
             processor = BatchInspectionProcessor(
@@ -287,7 +287,7 @@ class InjectedSessionTests(unittest.TestCase):
     """A GUI-owned session is reused by batch and monitor runs and survives them."""
 
     def test_batch_and_monitor_use_the_injected_session_without_building_or_closing_one(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_injected_session_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_injected_session_") as temporary:
             root = Path(temporary)
             session = _fake_session({"status": "context_only", "image_used": False})
             used = []

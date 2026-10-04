@@ -72,7 +72,7 @@ def run_packaged_smoke_test() -> int:
     app = QApplication.instance() or QApplication([])
     # Isolated settings: the operator's saved image, folders and screen must neither be restored
     # (a restored large image starts background work that blocks close) nor overwritten.
-    with tempfile.TemporaryDirectory(prefix="visionflow_smoke_settings_") as settings_dir:
+    with tempfile.TemporaryDirectory(prefix="tilescope_smoke_settings_") as settings_dir:
         settings = QSettings(str(Path(settings_dir) / "gui.ini"), QSettings.Format.IniFormat)
         window = MainWindow(settings=settings)
         window.recipe_panel.load_recipe(recipe_path)
@@ -142,7 +142,7 @@ def run_packaged_tuned_detector_smoke_test() -> int:
     cv2.circle(image, (70, 40), 9, (255, 255, 255), -1)
     exporter = DetectorBundleExporter()
     names = exporter.names_for("SMOKE-TUNED-1")
-    with tempfile.TemporaryDirectory(prefix="visionflow_packaged_tuned_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="tilescope_packaged_tuned_") as temporary:
         source_path = Path(temporary) / f"{names.module_name}.py"
         source_path.write_text(
             exporter.render_detector(names, "封裝煙霧測試", params, (96, 64)),
@@ -201,7 +201,7 @@ def run_packaged_sapera_diagnose_smoke_test() -> int:
     from devices.sapera_api import DLL_PATH_ENV as SAPERA_DLL_PATH_ENV
     from devices.sapera_diagnose import run_sapera_diagnose
 
-    with tempfile.TemporaryDirectory(prefix="visionflow_packaged_sapera_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="tilescope_packaged_sapera_") as temporary:
         root = Path(temporary)
         report = run_sapera_diagnose(
             environ={SAPERA_DLL_PATH_ENV: str(root / "SapClassBasic.dll")},
@@ -243,7 +243,7 @@ def run_packaged_ccd_smoke_test() -> int:
     from devices.lsi8181 import DLL_PATH_ENV as LSI_DLL_PATH_ENV
     from devices.sapera_api import DLL_PATH_ENV as SAPERA_DLL_PATH_ENV
 
-    with tempfile.TemporaryDirectory(prefix="visionflow_packaged_ccd_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="tilescope_packaged_ccd_") as temporary:
         devices = create_ccd_devices(
             {
                 SAPERA_DLL_PATH_ENV: str(Path(temporary) / "SapClassBasic.dll"),
@@ -347,7 +347,7 @@ def run_packaged_gpu_fallback_smoke_test() -> int:
     from core.gpu_runtime import GpuRuntimeError
     from core.pipeline import AOIPipeline
 
-    with tempfile.TemporaryDirectory(prefix="visionflow_packaged_smoke_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="tilescope_packaged_smoke_") as temporary:
         root = Path(temporary)
         image_path = root / "input.png"
         image = np.random.default_rng(20260717).integers(0, 256, size=(128, 128, 3), dtype=np.uint8)
@@ -420,7 +420,7 @@ def run_packaged_yolox_smoke_test() -> int:
     if not recipe_path.is_file() or not manifest.model_path.is_file():
         return 10
 
-    with tempfile.TemporaryDirectory(prefix="visionflow_packaged_yolox_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="tilescope_packaged_yolox_") as temporary:
         root = Path(temporary)
         image_path = root / "input.png"
         encoded, payload = cv2.imencode(
@@ -528,7 +528,7 @@ def startup_error_text(exc: BaseException, trace: str = "") -> str:
     else:
         summary = f"{name}：{message}"
     lines = [
-        "VisionFlow AOI 啟動失敗",
+        "TileScope AOI Classic 啟動失敗",
         "",
         f"摘要：{summary}",
         f"例外：{name}: {message}",
@@ -672,7 +672,7 @@ def self_check_lines(*, environ=None, deep_sapera: bool = True) -> tuple[tuple[s
                     "成員齊全" if not missing else "缺少 " + "、".join(missing[:5]),
                 )
             else:
-                record("Sapera managed 載入", False, "找不到 SapClassBasic.dll；請設定 SAPERADIR 或 VISIONFLOW_SAPERA_DLL")
+                record("Sapera managed 載入", False, "找不到 SapClassBasic.dll；請設定 SAPERADIR 或 TILESCOPE_SAPERA_DLL")
                 record("Sapera API 自檢", False, "略過（上一步失敗）")
         except Exception as exc:  # noqa: BLE001
             record("Sapera managed 載入", False, f"{getattr(exc, 'code', '')} {exc}".strip())
@@ -686,7 +686,7 @@ def self_check_text(lines, failures, *, log_path: Path | None = None) -> str:
 
     passed = len(lines) - len(failures)
     header = [
-        "VisionFlow AOI 自我檢查（--self-check）",
+        "TileScope AOI Classic 自我檢查（--self-check）",
         f"時間：{datetime.now():%Y-%m-%d %H:%M:%S}",
         f"結果：{passed} PASS、{len(failures)} FAIL",
         "",
@@ -717,7 +717,7 @@ def run_self_check(*, show_ui: bool = True, log_dir: str | Path | None = None, e
         path = None
         _write_stderr(f"無法寫出自我檢查報告：{exc}")
     text = self_check_text(lines, failures, log_path=path)
-    show_message("VisionFlow AOI 自我檢查", text, show_ui=show_ui)
+    show_message("TileScope AOI Classic 自我檢查", text, show_ui=show_ui)
     return 1 if failures else 0
 
 
@@ -741,7 +741,7 @@ def main(argv=None) -> int:
             detail = f"\n\n完整內容：{path}"
         except OSError:
             detail = ""
-        show_message("VisionFlow AOI 啟動失敗", startup_error_text(exc) + detail)
+        show_message("TileScope AOI Classic 啟動失敗", startup_error_text(exc) + detail)
         return 4
 
 

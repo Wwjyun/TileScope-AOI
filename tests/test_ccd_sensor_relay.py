@@ -296,7 +296,7 @@ class AdvantechDigitalIoTests(unittest.TestCase):
             nested.parent.mkdir()
             nested.write_bytes(b"")
             self.assertEqual(locate_assembly("", {}, empty), nested)
-            self.assertEqual(locate_assembly("", {"VISIONFLOW_BDAQ_DLL": str(nested)}, ()), nested)
+            self.assertEqual(locate_assembly("", {"TILESCOPE_BDAQ_DLL": str(nested)}, ()), nested)
         io = AdvantechDigitalIo(assembly_path=str(Path(temp) / "gone.dll"), environ={})
         availability = io.availability()
         self.assertFalse(availability.available)
@@ -332,7 +332,7 @@ class AdvantechDigitalIoTests(unittest.TestCase):
 
     def test_factory_wiring(self):
         self.assertFalse(CcdDevices(SimulatedLineScanCamera(auto_emit=False), SimulatedMeterWheel()).digital_io.availability().available)
-        self.assertIsInstance(create_ccd_devices({"VISIONFLOW_CCD_SIMULATOR": "1"}).digital_io, SimulatedDigitalIo)
+        self.assertIsInstance(create_ccd_devices({"TILESCOPE_CCD_SIMULATOR": "1"}).digital_io, SimulatedDigitalIo)
         self.assertIsInstance(create_ccd_devices({}).digital_io, AdvantechDigitalIo)
         with self.assertRaises(DeviceError):
             UnavailableDigitalIo().read_bit(0, 0)

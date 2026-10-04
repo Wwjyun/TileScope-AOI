@@ -21,6 +21,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from core.env_names import env_value
 from devices.lsi8181 import DLL_NAME, DLL_PATH_ENV, dll_candidates
 
 _MACHINE_TYPES = {
@@ -242,8 +243,8 @@ def diagnose_meter_wheel_dll(
         Lsi8181Library.load(dll_path=found, environ=env)
     except Lsi8181LoadError as exc:
         load_error = str(exc)
-        if env.get(DLL_PATH_ENV) and str(env[DLL_PATH_ENV]) != found:
-            driver_hint = f"環境變數 {DLL_PATH_ENV} 指向 {env[DLL_PATH_ENV]}，可能不是實際要用的 DLL。"
+        if env_value("LSI8181_DLL", env) and str(env_value("LSI8181_DLL", env)) != found:
+            driver_hint = f"環境變數 {DLL_PATH_ENV} 指向 {env_value('LSI8181_DLL', env)}，可能不是實際要用的 DLL。"
     except Exception as exc:  # noqa: BLE001 - diagnostics must never raise
         load_error = f"{type(exc).__name__}: {exc}"
 

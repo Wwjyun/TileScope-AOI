@@ -513,7 +513,7 @@ def render_html_report(distribution: SummaryDistribution) -> str:
       <ul class="help">
         <li>缺陷筆數＝summary.csv 資料列數；有缺陷 Tile／圖片＝至少出現一筆缺陷的不同 ID 數。</li>
         <li>summary.csv 不含零缺陷 Tile，因此本報表不能計算 PASS Tile 數、缺陷率、良率或完整網格覆蓋率。</li>
-        <li>舊 CSV 有 area 但缺少 area_unit 時，依 VisionFlow 相容規則視為 px²；不同單位不互相加總。</li>
+        <li>舊 CSV 有 area 但缺少 area_unit 時，依 TileScope AOI 相容規則視為 px²；不同單位不互相加總。</li>
       </ul>
       <details><summary>來源欄位與工具資訊</summary><p>CSV 欄位：__SOURCE_FIELDS__</p><p>Tile NG 率來源：__JSON_SOURCE__</p><p>工具版本：__TOOL_VERSION__；Plotly 已內嵌，報表不需網路連線。</p></details>
     </section>

@@ -1552,7 +1552,7 @@ class CcdController(QObject, LogMixin):
         self._sensor_relay_timer.stop()
         self._last_relay_stats = relay.stats()
         self.sensor_relay_changed.emit(self._last_relay_stats)
-        # Release the card between runs so it is never held while VisionFlow is idle.
+        # Release the card between runs so it is never held while TileScope AOI is idle.
         self.devices.digital_io.disconnect()
 
     def _publish_sensor_relay_stats(self) -> None:
@@ -1898,7 +1898,7 @@ class CcdController(QObject, LogMixin):
         return True
 
     # ------------------------------------------------------------------
-    # RS-232 light (stays on while VisionFlow runs; brightness per channel)
+    # RS-232 light (stays on while TileScope AOI runs; brightness per channel)
     # ------------------------------------------------------------------
     @property
     def light_status(self) -> LightStatus:
@@ -2417,7 +2417,7 @@ class CcdController(QObject, LogMixin):
             "light.off_commands": "；".join(self._machine.light.off_commands),
             "light.brightness_template": self._machine.light.brightness_template,
         }
-        # A blank cell reads like a missing value; say that VisionFlow has nothing set yet.
+        # A blank cell reads like a missing value; say that TileScope AOI has nothing set yet.
         return {key: value if str(value).strip() else "（未設定）" for key, value in values.items()}
 
     def apply_legacy_import(self, findings: Sequence[LegacyImportFinding]) -> list[str]:

@@ -14,6 +14,8 @@ import cv2
 import numpy as np
 import yaml
 
+from core.env_names import env_value
+
 
 class AiModelError(RuntimeError):
     pass
@@ -68,7 +70,7 @@ class YoloXModelRegistry:
 
     @staticmethod
     def default_root() -> Path:
-        configured = os.getenv("VISIONFLOW_YOLOX_MODEL_DIR")
+        configured = env_value("YOLOX_MODEL_DIR")
         if configured:
             return Path(configured)
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):

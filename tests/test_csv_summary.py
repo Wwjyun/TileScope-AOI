@@ -21,7 +21,7 @@ class CsvSummaryExporterTests(unittest.TestCase):
             writer.writerows(rows)
 
     def test_combines_source_csvs_with_union_schema_and_excludes_old_summary(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_csv_summary_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_csv_summary_") as temporary:
             csv_dir = Path(temporary) / "csv"
             self._write_csv(csv_dir / "b.csv", ["image_name", "area"], [{"image_name": "b.png", "area": "2"}])
             self._write_csv(csv_dir / "a.csv", ["image_name", "score"], [{"image_name": "a.png", "score": "0.9"}])
@@ -43,7 +43,7 @@ class CsvSummaryExporterTests(unittest.TestCase):
                 self.assertEqual(len(list(csv.DictReader(handle))), 2)
 
     def test_returns_none_when_no_source_csv_exists(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_csv_summary_empty_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_csv_summary_empty_") as temporary:
             self.assertIsNone(CsvSummaryExporter.write_summary(Path(temporary) / "csv"))
 
     def test_finalize_result_attaches_summary_only_when_csv_was_enabled(self):
@@ -65,7 +65,7 @@ class CsvSummaryWorkflowTests(unittest.TestCase):
         fake_session.__enter__ = Mock(return_value=fake_session)
         fake_session.__exit__ = Mock(return_value=None)
         fake_session.warm_up_before_run.return_value = {"status": "not_requested"}
-        with tempfile.TemporaryDirectory(prefix="visionflow_batch_summary_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_batch_summary_") as temporary:
             root = Path(temporary)
             processor = BatchInspectionProcessor(root, root / "recipe.yaml", root / "output", max_workers=1)
             processor.discover_images = Mock(return_value=[root / "one.png"])
@@ -94,7 +94,7 @@ class CsvSummaryWorkflowTests(unittest.TestCase):
         fake_session.__enter__ = Mock(return_value=fake_session)
         fake_session.__exit__ = Mock(return_value=None)
         fake_session.warm_up_before_run.return_value = {"status": "not_requested"}
-        with tempfile.TemporaryDirectory(prefix="visionflow_monitor_summary_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_monitor_summary_") as temporary:
             root = Path(temporary)
             processor = FolderMonitorProcessor(
                 root,

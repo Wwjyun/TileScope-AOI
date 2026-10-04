@@ -1149,7 +1149,7 @@ def validate_pipeline(image_path: Path, recipe_path: Path, dll_path: str) -> dic
     for recipe in (cpu_recipe, gpu_recipe):
         recipe["output"] = _disabled_report_output(recipe.get("output", {}))
 
-    with tempfile.TemporaryDirectory(prefix="visionflow_cuda_validation_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="tilescope_cuda_validation_") as temporary:
         temporary_path = Path(temporary)
         cpu_path = temporary_path / "cpu.yaml"
         gpu_path = temporary_path / "gpu.yaml"
@@ -1225,7 +1225,7 @@ def validate_resize_area_recipe_sweep(dll_path: str) -> list[dict]:
     recipe_path = ROOT / "recipes" / RESIZE_AREA_RECIPE
     base = RecipeManager().load(recipe_path)
     results = []
-    with tempfile.TemporaryDirectory(prefix="visionflow_resize_area_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="tilescope_resize_area_") as temporary:
         folder = Path(temporary)
         images = {}
         for label, circles in (("pass", 0), ("ng", 12)):

@@ -6,7 +6,7 @@ from pathlib import Path
 
 SPEC_DIR = Path(SPECPATH).resolve()
 ROOT = SPEC_DIR.parent.parent
-VERSION_INFO = ROOT / 'build' / 'version_info' / 'VisionFlow AOI.txt'
+VERSION_INFO = ROOT / 'build' / 'version_info' / 'TileScope AOI Classic.txt'
 
 cuda_dll = ROOT / 'gpu' / 'visionflow_cuda.dll'
 cuda_binaries = [(str(cuda_dll), 'gpu')] if cuda_dll.exists() else []
@@ -57,7 +57,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='VisionFlow AOI',
+    name='TileScope AOI Classic',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -77,5 +77,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name='VisionFlow AOI',
+    name='TileScope AOI Classic',
 )

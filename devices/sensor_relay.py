@@ -10,7 +10,7 @@ from devices.interfaces import DigitalIo
 
 # ============================================================
 # Sensor relay (「Sensor 中繼」).
-# The Sensor reaches the grabber only through a PCIe-1730 DI -> program -> DO path, so VisionFlow
+# The Sensor reaches the grabber only through a PCIe-1730 DI -> program -> DO path, so TileScope AOI
 # polls the DI and acts on each inactive -> active edge:
 #   forward: External Trigger One Frame; pulse the DO wired to the grabber frame-trigger input from
 #            the relay thread itself, so no GUI-thread latency is added.

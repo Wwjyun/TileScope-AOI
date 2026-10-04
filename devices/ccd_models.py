@@ -315,7 +315,7 @@ class SensorRelaySettings:
 
     On this machine the Sensor is wired into a DI of the I/O card and a DO of the card is wired to
     the grabber's frame-trigger input, so nothing reaches the grabber unless a program forwards
-    the Sensor. When enabled, VisionFlow polls the DI and, depending on the trigger mode written to
+    the Sensor. When enabled, TileScope AOI polls the DI and, depending on the trigger mode written to
     the camera, pulses the DO (External Trigger One Frame) or starts a Software Trigger `Snap()`.
     Off by default: the machine's original program also drives this card and must not run at the
     same time.
@@ -334,7 +334,7 @@ class SensorRelaySettings:
     poll_interval_ms: float = 1.0
     # Software Trigger by Sensor, matching the original program's per-trigger sequence:
     # optionally set the encoder to snap_encoder_value first, then put the compare
-    # snap_compare_offset counts ahead of the encoder (0 = one line ahead, VisionFlow's default).
+    # snap_compare_offset counts ahead of the encoder (0 = one line ahead, TileScope AOI's default).
     snap_encoder_reset: bool = False
     snap_encoder_value: int = 0
     snap_compare_offset: int = 0
@@ -422,7 +422,7 @@ class LightSettings:
     `{xor}`; see devices/serial_light.py). Switching off sends `off_commands`, or brightness 0 for
     every channel when there are none. When enabled, camera-direct monitoring switches the light
     on when it starts and off when it stops; otherwise it is switched by hand for testing, and it
-    is switched off when VisionFlow closes. Commands are text
+    is switched off when TileScope AOI closes. Commands are text
     with escapes (\\r, \\n, \\t, \\xNN, \\\\); `line_ending` is appended to every command. Off by default.
     """
 

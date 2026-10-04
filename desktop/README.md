@@ -1,4 +1,4 @@
-# VisionFlow AOI Desktop
+# TileScope AOI Desktop
 
 Tauri 2 桌面外殼：Rust 宿主 + React 前端，透過 stdio JSON-RPC 呼叫 Python sidecar
 （`python -m aoi_sidecar`，與本資料夾平行開發）。檢測核心沿用 `core/`、`detectors/`、
@@ -42,7 +42,7 @@ sidecar 啟動解析順序：
    `AOI_REPO_ROOT` 覆寫；repo 預設為 `src-tauri/../..`，編譯期寫入）
 
 sidecar 的 stdout 為 UTF-8 NDJSON（JSON-RPC 2.0），stderr 寫入
-`%LOCALAPPDATA%\VisionFlowAOI\logs\sidecar.log`，宿主 log 為同目錄 `desktop.log`。
+`%LOCALAPPDATA%\TileScopeAOI\logs\sidecar.log`，宿主 log 為同目錄 `desktop.log`。
 
 ## 建置
 
@@ -55,7 +55,7 @@ cargo build                        # debug
 cargo test
 cargo clippy
 cd ..
-npx tauri build --debug --no-bundle   # 產出 VisionFlow AOI Desktop.exe（跳過打包）
+npx tauri build --debug --no-bundle   # 產出 TileScope AOI.exe（跳過打包）
 ```
 
 安裝包（NSIS）會在 `sidecar/` 資料夾有 PyInstaller onedir 時打包；目前為空

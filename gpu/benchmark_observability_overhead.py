@@ -142,7 +142,7 @@ def benchmark_runtime(runtime: GpuRuntime, *, width: int, height: int, warmup: i
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Measure VisionFlow GPU observability overhead")
+    parser = argparse.ArgumentParser(description="Measure TileScope AOI GPU observability overhead")
     parser.add_argument("--dll", default="gpu/visionflow_cuda.dll")
     parser.add_argument("--width", type=int, default=512)
     parser.add_argument("--height", type=int, default=512)

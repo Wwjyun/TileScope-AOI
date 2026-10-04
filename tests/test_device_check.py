@@ -121,7 +121,7 @@ class ReportTests(unittest.TestCase):
         self.assertIn("C PASS 相機：已連線\n    狀態：待機", report.text())
         with tempfile.TemporaryDirectory() as directory:
             written = write_report(report, directory)
-            self.assertTrue(Path(written.report_path).read_text(encoding="utf-8").startswith("VisionFlow AOI 設備自檢"))
+            self.assertTrue(Path(written.report_path).read_text(encoding="utf-8").startswith("TileScope AOI 設備自檢"))
 
     def test_camera_item_from_diagnose(self):
         failed = camera_item_from_diagnose(_diagnose(fail=True))

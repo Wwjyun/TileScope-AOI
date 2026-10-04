@@ -25,6 +25,8 @@ from pathlib import Path
 
 import numpy as np
 
+from core.env_names import env_value
+
 ROOT = Path(__file__).resolve().parents[1]
 STUB_SOURCE = ROOT / "tests" / "fixtures" / "sapera_stub" / "SapClassBasicStub.cs"
 SERVER = "Xtium-CL_MX4_1"
@@ -35,7 +37,7 @@ _STUB: dict[str, object] = {}
 
 
 def _find_csc() -> Path | None:
-    override = os.environ.get("VISIONFLOW_CSC")
+    override = env_value("CSC")
     candidates = [Path(override)] if override else []
     windir = os.environ.get("SystemRoot") or r"C:\Windows"
     for framework in ("Framework64", "Framework"):
@@ -52,7 +54,7 @@ def setUpModule() -> None:
         return
     csc = _find_csc()
     if csc is None:
-        _STUB["error"] = "找不到 .NET Framework csc.exe（可設定 VISIONFLOW_CSC）"
+        _STUB["error"] = "找不到 .NET Framework csc.exe（可設定 TILESCOPE_CSC）"
         return
     try:
         import pythonnet  # noqa: F401, PLC0415
@@ -63,7 +65,7 @@ def setUpModule() -> None:
 
     # The loaded assembly stays locked for the life of the process, so its directory is created
     # outside the test and its cleanup failure is ignored on purpose.
-    directory = tempfile.TemporaryDirectory(prefix="visionflow-sapera-stub-", ignore_cleanup_errors=True)
+    directory = tempfile.TemporaryDirectory(prefix="tilescope-sapera-stub-", ignore_cleanup_errors=True)
     _STUB["directory"] = directory
     dll = Path(directory.name) / "DALSA.SaperaLT.SapClassBasic.dll"
     try:
@@ -105,7 +107,7 @@ class SaperaStubInteropTests(unittest.TestCase):
         self.stub = runtime.namespace.StubHardware
         self.stub.Reset()
         self.stub.TakeCalls()
-        self._workdir = tempfile.TemporaryDirectory(prefix="visionflow-sapera-ccf-")
+        self._workdir = tempfile.TemporaryDirectory(prefix="tilescope-sapera-ccf-")
         self.addCleanup(self._workdir.cleanup)
         self.ccf = Path(self._workdir.name) / "test.ccf"
         self.ccf.write_text("", encoding="utf-8")

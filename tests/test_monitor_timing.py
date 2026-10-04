@@ -23,7 +23,7 @@ class MonitorTimingTests(unittest.TestCase):
             "execution": {"performance": {}},
             "tiles": [],
         }
-        with tempfile.TemporaryDirectory(prefix="visionflow_monitor_timing_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_monitor_timing_") as temporary:
             root = Path(temporary)
             source = root / "input" / "image.png"
             source.parent.mkdir()
@@ -64,7 +64,7 @@ class MonitorTimingTests(unittest.TestCase):
         self.assertEqual(result.to_dict()["timing"], result.timing)
 
     def test_first_observation_survives_stability_checks_until_queueing(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_monitor_stable_timing_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_monitor_stable_timing_") as temporary:
             root = Path(temporary)
             image_path = root / "image.png"
             image_path.write_bytes(b"image")
@@ -88,7 +88,7 @@ class MonitorTimingTests(unittest.TestCase):
         self.assertEqual(processor._ready_at[image_path], 21.0)
 
     def test_arrival_timestamp_in_previous_poll_window_includes_discovery_wait(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_monitor_arrival_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_monitor_arrival_") as temporary:
             root = Path(temporary)
             image_path = root / "image.png"
             image_path.write_bytes(b"image")

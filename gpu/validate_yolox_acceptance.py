@@ -464,7 +464,7 @@ def run_validation(
     }
 
     evaluated_cases = []
-    with tempfile.TemporaryDirectory(prefix="visionflow_yolox_acceptance_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="tilescope_yolox_acceptance_") as temporary:
         root = Path(temporary)
         recipe_path = root / "acceptance_recipe.yaml"
         recipe_path.write_text(

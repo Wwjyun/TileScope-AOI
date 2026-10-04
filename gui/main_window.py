@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.camera_monitor_processor import CameraFrameQueue
+from core.env_names import env_value
 from core.logging_system import LogMixin, configure_logging
 from core.gpu_session import GpuExecutionSession, GpuExecutionSessionCache
 from gui.backend_comparison_dialog import BackendComparisonDialog, comparison_headline
@@ -169,7 +170,7 @@ class MainWindow(QMainWindow, LogMixin):
         app = QApplication.instance()
         if app is not None:
             theme.install_application_font(app)
-        self.setWindowTitle("VisionFlow AOI")
+        self.setWindowTitle("TileScope AOI Classic")
         self.resize(1440, 900)
 
         # ---- state ----
@@ -179,8 +180,8 @@ class MainWindow(QMainWindow, LogMixin):
         )
         if yolox_model_directory is not None:
             yolox_model_directory = yolox_model_directory.resolve()
-            os.environ["VISIONFLOW_YOLOX_MODEL_DIR"] = str(yolox_model_directory)
-        configured_yolox_directory = os.getenv("VISIONFLOW_YOLOX_MODEL_DIR", "")
+            os.environ["TILESCOPE_YOLOX_MODEL_DIR"] = str(yolox_model_directory)
+        configured_yolox_directory = env_value("YOLOX_MODEL_DIR") or ""
         self.yolox_model_directory = (
             Path(configured_yolox_directory).resolve()
             if configured_yolox_directory
@@ -686,7 +687,7 @@ class MainWindow(QMainWindow, LogMixin):
 
     def _on_yolox_model_directory_changed(self, directory: str) -> None:
         resolved = str(Path(directory).resolve())
-        os.environ["VISIONFLOW_YOLOX_MODEL_DIR"] = resolved
+        os.environ["TILESCOPE_YOLOX_MODEL_DIR"] = resolved
         self.yolox_model_directory = Path(resolved)
         self.preferences.set_value("paths/yolox_model_directory", resolved)
         self.preferences.settings.sync()

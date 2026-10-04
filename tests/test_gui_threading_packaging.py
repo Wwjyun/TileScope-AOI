@@ -17,14 +17,14 @@ BUILD_DIR = ROOT / "packaging" / "scripts"
 
 class GuiThreadingPackagingContractTests(unittest.TestCase):
     def test_packaged_smoke_resolves_recipe_from_pyinstaller_bundle(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_bundle_") as directory:
+        with tempfile.TemporaryDirectory(prefix="tilescope_bundle_") as directory:
             with patch.object(sys, "_MEIPASS", directory, create=True):
                 expected = Path(directory) / "recipes" / "DEMO.yaml"
                 self.assertEqual(bundled_recipe_path(), expected)
 
     def test_gui_launcher_has_noninteractive_packaged_smoke_mode(self):
         launcher = (ROOT / "gui_launcher.py").read_text(encoding="utf-8")
-        spec = (SPEC_DIR / "VisionFlow AOI.spec").read_text(encoding="utf-8")
+        spec = (SPEC_DIR / "TileScope AOI Classic.spec").read_text(encoding="utf-8")
 
         self.assertIn('if "--smoke-test" in args:', launcher)
         self.assertIn("run_packaged_yolox_smoke_test", launcher)
@@ -62,7 +62,7 @@ class GuiThreadingPackagingContractTests(unittest.TestCase):
 
         settings, window = created[0]
         self.assertIsNotNone(settings, "the smoke must never read or write the operator's QSettings")
-        self.assertIn("visionflow_smoke_settings_", settings.fileName())
+        self.assertIn("tilescope_smoke_settings_", settings.fileName())
         window._inspection_gpu_sessions.close()
         window.deleteLater()
 
@@ -74,7 +74,7 @@ class GuiThreadingPackagingContractTests(unittest.TestCase):
 
         self.assertEqual(gui_launcher.run_packaged_tuned_detector_smoke_test(), 0)
         self.assertIn("contour_preprocess_tool.engine", gui_launcher.SELF_CHECK_MODULES)
-        spec = (SPEC_DIR / "VisionFlow AOI.spec").read_text(encoding="utf-8")
+        spec = (SPEC_DIR / "TileScope AOI Classic.spec").read_text(encoding="utf-8")
         self.assertIn("'contour_preprocess_tool.engine'", spec)
         self.assertIn("'contour_preprocess_tool.detector_export'", spec)
 
@@ -110,13 +110,13 @@ class GuiThreadingPackagingContractTests(unittest.TestCase):
         self.assertIn("self.failed.emit(str(exc))", workers)
 
     def test_pyinstaller_cuda_dll_is_optional_and_keeps_gpu_relative_path(self):
-        spec = (SPEC_DIR / "VisionFlow AOI.spec").read_text(encoding="utf-8")
+        spec = (SPEC_DIR / "TileScope AOI Classic.spec").read_text(encoding="utf-8")
         build = (BUILD_DIR / "build_exe.ps1").read_text(encoding="utf-8")
 
         self.assertIn("if cuda_dll.exists() else []", spec)
         self.assertIn("(str(cuda_dll), 'gpu')", spec)
         self.assertIn("if (Test-Path -LiteralPath $cudaDll -PathType Leaf)", build)
-        self.assertIn('"VisionFlow AOI.spec"', build)
+        self.assertIn('"TileScope AOI Classic.spec"', build)
         self.assertIn("Invoke-PyInstallerBuild @buildArguments", build)
         self.assertNotIn('"--add-binary"', build)
         self.assertIn("CPU-compatible package", build)
@@ -183,7 +183,7 @@ class GuiThreadingPackagingContractTests(unittest.TestCase):
         )
 
     def test_pyinstaller_bundles_pythonnet_but_never_the_vendor_camera_dll(self):
-        spec = (SPEC_DIR / "VisionFlow AOI.spec").read_text(encoding="utf-8")
+        spec = (SPEC_DIR / "TileScope AOI Classic.spec").read_text(encoding="utf-8")
         code = "\n".join(line for line in spec.splitlines() if not line.strip().startswith("#"))
 
         self.assertIn("'pythonnet'", spec)
@@ -275,7 +275,7 @@ class GuiThreadingPackagingContractTests(unittest.TestCase):
     def test_self_check_names_the_missing_module_and_writes_a_report(self):
         import gui_launcher
 
-        with tempfile.TemporaryDirectory(prefix="visionflow_self_check_") as directory:
+        with tempfile.TemporaryDirectory(prefix="tilescope_self_check_") as directory:
             with patch.object(gui_launcher, "SELF_CHECK_MODULES", ("json", "definitely_absent_module_xyz")):
                 lines, failures = gui_launcher.self_check_lines(deep_sapera=False)
                 code = gui_launcher.run_self_check(show_ui=False, log_dir=directory)
@@ -311,7 +311,7 @@ class GuiThreadingPackagingContractTests(unittest.TestCase):
         import gui_launcher
 
         shown: list[str] = []
-        with tempfile.TemporaryDirectory(prefix="visionflow_startup_") as directory:
+        with tempfile.TemporaryDirectory(prefix="tilescope_startup_") as directory:
             report = Path(directory) / "startup-error.txt"
             with patch.object(
                 gui_launcher,

@@ -1,4 +1,4 @@
-# VisionFlow AOI 設備設定說明
+# TileScope AOI 設備設定說明
 
 本版本只供私有示範及來源審查，不附任何產品或機台的校準設定。
 硬體實作參考的既有取像程式已取得權利人同意；來源紀錄見隨包附的 `SOURCE_PROVENANCE.md`。

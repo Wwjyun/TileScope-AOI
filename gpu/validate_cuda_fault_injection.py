@@ -134,7 +134,7 @@ def child_init_failure(dll: str) -> dict:
            "Detector did not report CPU fallback reason")
 
     tile = {"mode": "grid", "width": 256, "height": 256, "overlap_x": 0, "overlap_y": 0}
-    with tempfile.TemporaryDirectory(prefix="visionflow_fault_init_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="tilescope_fault_init_") as temporary:
         folder = Path(temporary)
         image_path = _write_image(folder / "input.png", image)
         cpu_recipe = _write_recipe(folder / "cpu.yaml", _recipe({"mode": "cpu", "dll_path": dll}, tile, False))
@@ -211,7 +211,7 @@ def _session_crop_recovery(dll: str, normal: np.ndarray, tall: np.ndarray) -> li
     tile = {"mode": "grid", "width": 1, "height": TALL_HEIGHT, "overlap_x": 0, "overlap_y": 0}
     gpu = {"mode": "auto", "dll_path": dll, "fallback_to_cpu": True, "tiling": True}
     runs = []
-    with tempfile.TemporaryDirectory(prefix="visionflow_fault_session_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="tilescope_fault_session_") as temporary:
         folder = Path(temporary)
         recipe_path = _write_recipe(folder / "session.yaml", _recipe(gpu, tile, False))
         cpu_recipe = _write_recipe(folder / "cpu.yaml", _recipe({"mode": "cpu", "dll_path": dll}, tile, False))
@@ -334,7 +334,7 @@ def child_sticky_context(dll: str) -> dict:
     cpu = _without_execution(manager.create(DETECTOR_ID).run(image))
     tile = {"mode": "grid", "width": 256, "height": 256, "overlap_x": 0, "overlap_y": 0}
     runs = []
-    with tempfile.TemporaryDirectory(prefix="visionflow_fault_sticky_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="tilescope_fault_sticky_") as temporary:
         folder = Path(temporary)
         image_path = _write_image(folder / "input.png", image)
         cpu_recipe = _write_recipe(folder / "cpu.yaml", _recipe({"mode": "cpu", "dll_path": dll}, tile, False))

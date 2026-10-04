@@ -512,7 +512,7 @@ class IniParsingTests(unittest.TestCase):
         self.assertEqual(result.machine.meter_wheel, MeterWheelSettings())
         self.assertEqual(result.machine.save, SaveSettings())
         self.assertEqual(result.product, CameraRecipeSettings())
-        # An absent `ImageSaveFormat` keeps the VisionFlow default, not the C# `Png` default.
+        # An absent `ImageSaveFormat` keeps the TileScope AOI default, not the C# `Png` default.
         self.assertEqual(result.machine.save.image_format, ImageSaveFormat.BMP)
         self.assertEqual(result.warnings, ())
 
@@ -532,14 +532,14 @@ class IniParsingTests(unittest.TestCase):
         self.assertEqual(result.source, "empty.ini")
         self.assertEqual(result.product, CameraRecipeSettings())
         self.assertEqual(result.machine, CcdMachineSettings().normalized())
-        # An absent `ImageSaveFormat` keeps the VisionFlow default, not the C# `Png` default.
+        # An absent `ImageSaveFormat` keeps the TileScope AOI default, not the C# `Png` default.
         self.assertEqual(result.machine.save.image_format, ImageSaveFormat.BMP)
         self.assertTrue(result.warnings)
 
     def test_text_without_recognized_keys_is_reported(self):
         result = parse_ccd_settings_ini("[Camera]\nSomeUnknownKey=1\n")
         self.assertEqual(len(result.warnings), 1)
-        self.assertIn("沒有 VisionFlow 可匯入的設定", result.warnings[0])
+        self.assertIn("沒有 TileScope AOI 可匯入的設定", result.warnings[0])
 
 
 class LevelSeparationTests(unittest.TestCase):

@@ -23,7 +23,7 @@ class DeviceErrorCode:
 _CODES = (
     # ---- E-21xx RS-232 light ------------------------------------------------------------
     DeviceErrorCode("E-2101", "光源", "無法使用光源控制（.NET 串列埠未就緒，或此機台沒有光源控制器）",
-                    "確認 VisionFlow 是完整解壓的資料夾、機台有 .NET Framework 4.x；沒有光源的機台可忽略。"),
+                    "確認 TileScope AOI 是完整解壓的資料夾、機台有 .NET Framework 4.x；沒有光源的機台可忽略。"),
     DeviceErrorCode("E-2102", "光源", "COM port 正被其他程式使用",
                     "關閉原機台程式（到工作管理員確認已結束，不是縮到背景），再按一次開燈。"),
     DeviceErrorCode("E-2103", "光源", "這台電腦沒有設定的 COM port",
@@ -64,11 +64,11 @@ _CODES = (
                     "重新開始預覽；持續發生請抄回訊息。"),
     # ---- E-51xx legacy program import -------------------------------------------------------
     DeviceErrorCode("E-5101", "原程式匯入", "分析原程式時發生程式錯誤",
-                    "這是 VisionFlow 的問題：抄回代碼與錯誤類型（例如 TypeError）回報修正。"),
+                    "這是 TileScope AOI 的問題：抄回代碼與錯誤類型（例如 TypeError）回報修正。"),
     DeviceErrorCode("E-5102", "原程式匯入", "找不到或讀不到原程式",
                     "改選 .sln、.csproj 或原始碼資料夾，確認資料夾內有 .cs 檔。"),
     DeviceErrorCode("E-5103", "原程式匯入", "匯入確認表無法顯示",
-                    "這是 VisionFlow 的問題：抄回代碼與訊息回報修正。"),
+                    "這是 TileScope AOI 的問題：抄回代碼與訊息回報修正。"),
     # ---- E-61xx camera-direct monitoring start --------------------------------------------
     DeviceErrorCode("E-6101", "相機直連監控", "相機未連線",
                     "先到 CCD 頁連線相機（外部觸發或軟體觸發）。"),
@@ -90,13 +90,13 @@ _CODES = (
     DeviceErrorCode("E-7101", "相機", "相機連線失敗",
                     "看訊息裡的 Sapera 代碼（E-01xx–E-09xx，對照 docs/sapera-diagnose.md），或執行「一鍵設備自檢」。"),
     DeviceErrorCode("E-7102", "相機", "相機中斷連線失敗",
-                    "關閉 VisionFlow 後重開；持續發生請抄回訊息。"),
+                    "關閉 TileScope AOI 後重開；持續發生請抄回訊息。"),
     DeviceErrorCode("E-7103", "相機", "預覽／擷取指令失敗",
                     "看同一則訊息的原因；常見是相機未連線或仍在擷取。"),
     DeviceErrorCode("E-7104", "相機", "相機診斷無法啟動",
                     "等目前的診斷結束後再試。"),
     DeviceErrorCode("E-7201", "機台設定", "CCD 機台設定檔寫入失敗",
-                    "確認 VisionFlow 資料夾可寫入（不要放在唯讀位置），並確認磁碟空間。"),
+                    "確認 TileScope AOI 資料夾可寫入（不要放在唯讀位置），並確認磁碟空間。"),
 )
 
 DEVICE_ERROR_CODES: dict[str, DeviceErrorCode] = {entry.code: entry for entry in _CODES}

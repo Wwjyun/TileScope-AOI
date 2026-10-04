@@ -179,7 +179,7 @@ class GpuExecutionSession(LogMixin):
             return summary
 
         report(20, "正在以目前影像試跑（不輸出檔案）")
-        with tempfile.TemporaryDirectory(prefix="visionflow_gpu_warmup_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_gpu_warmup_") as temporary:
             with AOIPipeline(
                 Path(recipe_path),
                 Path(temporary),

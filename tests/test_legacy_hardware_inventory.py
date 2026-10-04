@@ -50,28 +50,28 @@ class HardwareInventoryTests(unittest.TestCase):
         files.update(overrides or {})
         return scan_legacy_program(write_project(Path(self._temp.name), files))
 
-    def test_every_lsi_call_is_listed_with_values_and_visionflow_handling(self):
+    def test_every_lsi_call_is_listed_with_values_and_tilescope_handling(self):
         report = self.scan()
         cmp_out = report.finding("inventory.LSI8181_compare_CMP_OUT_set")
         self.assertEqual(cmp_out.status, STATUS_INFO)
         self.assertIn("極性=0、輸出模式=1、脈寬=25", cmp_out.display)
-        self.assertIn("可在 VisionFlow 設定：CMP OUT 極性、CMP Out Width", cmp_out.note)
-        self.assertIn("VisionFlow 固定：輸出模式=1", cmp_out.note)
+        self.assertIn("可在 TileScope AOI 設定：CMP OUT 極性、CMP Out Width", cmp_out.note)
+        self.assertIn("TileScope AOI 固定：輸出模式=1", cmp_out.note)
         self.assertNotIn("卡片", cmp_out.display, "the card ID has its own row")
         self.assertIsNotNone(report.finding("inventory.LSI8181_CI_mode_set"))
 
     def test_a_fixed_value_that_differs_and_an_unknown_function_are_warnings(self):
-        # The output mode is still fixed by VisionFlow (polarity is a setting since 2026-09-30).
+        # The output mode is still fixed by TileScope AOI (polarity is a setting since 2026-09-30).
         wheel = WHEEL.replace("LSI8181_compare_CMP_OUT_set(_card, 0, 1,", "LSI8181_compare_CMP_OUT_set(_card, 10, 0,")
         wheel = wheel.replace("Lsi.LSI8181_CIO_polarity_set(_card, 0x0001);", "Lsi.LSI8181_CIO_polarity_set(_card, 0x0001);\n            Lsi.LSI8181_compare_offset_output_level(_card, 1);")
         report = self.scan({"Machine/Devices/MeterWheel.cs": wheel, "Machine/Hardware/Lsi.cs": NATIVE_WITH_COUNTER})
         cmp_out = report.finding("inventory.LSI8181_compare_CMP_OUT_set")
         self.assertEqual(cmp_out.status, STATUS_WARNING)
-        self.assertIn("輸出模式 原程式 0、VisionFlow 固定 1", cmp_out.note)
+        self.assertIn("輸出模式 原程式 0、TileScope AOI 固定 1", cmp_out.note)
         self.assertEqual(report.finding("meter_wheel.cmp_out_polarity").value, 10, "polarity 10 is applicable")
         unknown = report.finding("inventory.LSI8181_compare_offset_output_level")
         self.assertEqual(unknown.status, STATUS_WARNING)
-        self.assertIn("VisionFlow 不會呼叫", unknown.note)
+        self.assertIn("TileScope AOI 不會呼叫", unknown.note)
 
     def test_sapera_parameters_and_features_are_listed(self):
         camera = CAMERA.replace(

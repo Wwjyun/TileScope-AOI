@@ -1,12 +1,12 @@
 [package]
-name = "visionflow-aoi-desktop"
+name = "tilescope-aoi-desktop"
 version = "0.1.0"
-description = "VisionFlow AOI Desktop — Tauri 2 host for the Python sidecar GUI"
-authors = ["VisionFlow AOI"]
+description = "TileScope AOI Desktop — Tauri 2 host for the Python sidecar GUI"
+authors = ["TileScope AOI"]
 edition = "2021"
 
 [lib]
-name = "visionflow_aoi_desktop_lib"
+name = "tilescope_aoi_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

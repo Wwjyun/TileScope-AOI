@@ -1,6 +1,6 @@
 # 傳統 CV Detector 調參工具
 
-這個目錄是 VisionFlow 傳統電腦視覺 Detector 的標準調參台。GUI、測試與未來 Detector 對照都以 `ContourProcessingEngine` 的 CPU/OpenCV 語意為基準。
+這個目錄是 TileScope AOI 傳統電腦視覺 Detector 的標準調參台。GUI、測試與未來 Detector 對照都以 `ContourProcessingEngine` 的 CPU/OpenCV 語意為基準。
 
 ## 執行
 
@@ -40,7 +40,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 中心／邊緣屏蔽與所有座標都是相對 Detector 收到的輸入（AOI 的每個 tile／ROI），不是整張原圖。匯出時會記錄調參影像尺寸為 `TUNING_IMAGE_SIZE`；啟用屏蔽且產線輸入尺寸不同時，Detector 結果的 `execution.tuning_warnings` 會提出警告。每筆 defect 的 `metadata.touches_tile_border` 標記 bbox 是否貼到輸入邊界（扣除邊緣屏蔽），貼邊代表缺陷可能延伸到相鄰 tile、面積只量到一部分。匯出前檢查若發現啟用屏蔽、未載入影像，或面積／邊長／半徑上限超過調參影像可容納的尺寸，會列出注意事項並要求確認後才匯出。
 
-已載入調參影像時，bundle 另外附帶 golden 回歸資料：`golden_<module>.json` 記錄影像檔名、寬高、檔案與解碼像素 SHA256、參數雜湊、工具版本及該影像的 detections／PASS-NG；`test_<module>_golden.py` 可複製到 `tests/`，永遠檢查 golden 與 Detector 凍結參數來自同一次匯出，並在環境變數 `VISIONFLOW_TUNING_GOLDEN_DIR` 指向影像資料夾時重播調參影像、比對 detections。調參影像可能是產線影像，不要提交到 repository。
+已載入調參影像時，bundle 另外附帶 golden 回歸資料：`golden_<module>.json` 記錄影像檔名、寬高、檔案與解碼像素 SHA256、參數雜湊、工具版本及該影像的 detections／PASS-NG；`test_<module>_golden.py` 可複製到 `tests/`，永遠檢查 golden 與 Detector 凍結參數來自同一次匯出，並在環境變數 `TILESCOPE_TUNING_GOLDEN_DIR` 指向影像資料夾時重播調參影像、比對 detections。調參影像可能是產線影像，不要提交到 repository。
 
 匯出的 Detector 明確固定走 CPU，不會因 Recipe 誤設 `use_gpu: true` 而把 CPU 運算回報成 CUDA。要加入 GPU 支援時，仍須把有效步驟遷移到共用 immutable `PreprocessPlan`，並完成 CPU/GPU 等價與 fallback 測試。
 
@@ -78,7 +78,7 @@ demo2 已有回歸測試證明 Gray → Gaussian 3 → Adaptive Mean Inv 21/C=1 
 完成後執行：
 
 ```powershell
-& '.\dist\Traditional-CV-Tuning-Tool\Traditional CV Tuning Tool.exe'
+& '.\dist\TileScope-Traditional-CV-Tuning-Tool\TileScope Traditional CV Tuning Tool.exe'
 ```
 
-Release ZIP 為 `Traditional-CV-Tuning-Tool-v1.1.0-windows-x64.zip`，Git tag 為 `cv-tuning-tool-v1.1.0`。EXE 為 Windows x64 one-file GUI，不需另裝 Python。OpenCV 處理使用 CPU，不含 CUDA DLL；Qt 會在可用時用 OpenGL 顯示完整解析度影像，否則自動使用 raster fallback。程式尚未簽章，Windows SmartScreen 可能顯示未知發行者。
+Release ZIP 為 `TileScope-Traditional-CV-Tuning-Tool-v1.1.0-windows-x64.zip`，Git tag 為 `cv-tuning-tool-v1.1.0`。EXE 為 Windows x64 one-file GUI，不需另裝 Python。OpenCV 處理使用 CPU，不含 CUDA DLL；Qt 會在可用時用 OpenGL 顯示完整解析度影像，否則自動使用 raster fallback。程式尚未簽章，Windows SmartScreen 可能顯示未知發行者。

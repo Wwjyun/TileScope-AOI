@@ -6,11 +6,27 @@ from pathlib import Path
 from PySide6.QtCore import QSettings
 
 
+def migrate_legacy_settings(new: QSettings, legacy: QSettings) -> bool:
+    """Copy legacy QSettings keys into ``new`` once (only when ``new`` is empty)."""
+    if new.allKeys():
+        return False
+    keys = legacy.allKeys()
+    if not keys:
+        return False
+    for key in keys:
+        new.setValue(key, legacy.value(key))
+    return True
+
+
 class GuiPreferences:
     """Small typed facade over QSettings; missing paths are ignored safely."""
 
     def __init__(self, settings: QSettings | None = None):
-        self.settings = settings or QSettings("VisionFlow", "AOI")
+        if settings is not None:
+            self.settings = settings
+        else:
+            self.settings = QSettings("TileScope", "AOI")
+            migrate_legacy_settings(self.settings, QSettings("VisionFlow", "AOI"))
 
     def value(self, key: str, default=None):
         return self.settings.value(key, default)

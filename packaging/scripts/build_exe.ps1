@@ -11,7 +11,7 @@ if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
     throw "Virtual environment python not found: $python"
 }
 
-$spec = Join-Path $SpecRoot "VisionFlow AOI.spec"
+$spec = Join-Path $SpecRoot "TileScope AOI Classic.spec"
 if (-not (Test-Path -LiteralPath $spec -PathType Leaf)) {
     throw "PyInstaller spec not found: $spec"
 }
@@ -36,9 +36,9 @@ try {
     $buildArguments = @{
         PythonPath = $python
         SpecPath = $spec
-        VersionInfoPath = (Join-Path $RepoRoot "build\version_info\VisionFlow AOI.txt")
-        ProductName = "VisionFlow AOI"
-        ExecutableName = "VisionFlow AOI.exe"
+        VersionInfoPath = (Join-Path $RepoRoot "build\version_info\TileScope AOI Classic.txt")
+        ProductName = "TileScope AOI Classic"
+        ExecutableName = "TileScope AOI Classic.exe"
         Version = "2.0.0"
     }
     Invoke-PyInstallerBuild @buildArguments
@@ -48,7 +48,7 @@ try {
 }
 
 # On-site reference sheets beside the EXE: the camera machine has no network and files only go in.
-$distRoot = Join-Path $RepoRoot "dist\VisionFlow AOI"
+$distRoot = Join-Path $RepoRoot "dist\TileScope AOI Classic"
 $siteDocs = @{
     "docs\packaging\DEVICE_PARAMETER_GUIDE.md" = "DEVICE_PARAMETER_GUIDE.md"
     "docs\device-error-codes.md" = "ERROR_CODES.md"
@@ -65,4 +65,4 @@ foreach ($source in $siteDocs.Keys) {
     Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $distRoot $siteDocs[$source]) -Force
 }
 
-Write-Host "Built GUI executable: dist\VisionFlow AOI\VisionFlow AOI.exe"
+Write-Host "Built GUI executable: dist\TileScope AOI Classic\TileScope AOI Classic.exe"

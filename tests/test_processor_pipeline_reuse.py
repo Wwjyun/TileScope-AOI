@@ -53,7 +53,7 @@ def _result_signature(result: dict) -> tuple:
 
 class PipelineReuseTests(unittest.TestCase):
     def setUp(self):
-        self._temporary = tempfile.TemporaryDirectory(prefix="visionflow_pipeline_reuse_")
+        self._temporary = tempfile.TemporaryDirectory(prefix="tilescope_pipeline_reuse_")
         self.root = Path(self._temporary.name)
         self.input_dir = self.root / "images"
         self.input_dir.mkdir()

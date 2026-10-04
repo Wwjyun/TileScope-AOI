@@ -604,7 +604,7 @@ class DetectorBundleExporterTests(unittest.TestCase):
                 )
 
     def test_packaging_excludes_foreign_path_runtimes_that_break_qt(self):
-        spec = Path("packaging/specs/Traditional CV Tuning Tool.spec").read_text(
+        spec = Path("packaging/specs/TileScope Traditional CV Tuning Tool.spec").read_text(
             encoding="utf-8"
         )
 

@@ -10,13 +10,20 @@ from typing import Any, Mapping
 
 import numpy as np
 
+from core.env_names import env_value
+
 from .engine import ContourProcessingEngine
 from .version import __version__
 
 
 GOLDEN_SCHEMA = "visionflow-traditional-cv-golden/v1"
 # Directory holding the tuning images; they are never committed with the golden JSON.
-GOLDEN_IMAGE_DIR_ENV = "VISIONFLOW_TUNING_GOLDEN_DIR"
+GOLDEN_IMAGE_DIR_ENV = "TILESCOPE_TUNING_GOLDEN_DIR"
+
+
+def golden_image_dir(environ: Mapping[str, str] | None = None) -> str | None:
+    """Tuning-image folder: ``TILESCOPE_TUNING_GOLDEN_DIR``, falling back to the legacy name."""
+    return env_value("TUNING_GOLDEN_DIR", environ)
 
 
 def params_sha256(params: Mapping[str, Any]) -> str:

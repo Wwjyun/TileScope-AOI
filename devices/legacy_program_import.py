@@ -11,7 +11,7 @@ from devices.serial_light import describe_bytes, escape_text
 
 # ============================================================
 # 「從原機台程式匯入」: read the machine's original C# program (.sln / .csproj / folder) as text and
-# pull out the values VisionFlow needs (LSI-8181 meter wheel, PCIe-1730 Sensor relay, Sapera CCF,
+# pull out the values TileScope AOI needs (LSI-8181 meter wheel, PCIe-1730 Sensor relay, Sapera CCF,
 # length, exposure, gain). Nothing is compiled or executed.
 #
 # The original program is object-oriented, so an argument is rarely a literal. Values are traced
@@ -924,7 +924,7 @@ def _finding(key, label, resolved, unresolved, convert=lambda v: v, show=str, no
         return ImportFinding(key, label, STATUS_CONFLICT, None, shown, "原程式在不同地方用了不同的值，請確認實際使用哪一個。", hits)
     value = next(iter(converted))
     if isinstance(value, tuple):
-        return ImportFinding(key, label, STATUS_UNRESOLVED, None, str(value[1]), "這個值 VisionFlow 無法對應。", hits)
+        return ImportFinding(key, label, STATUS_UNRESOLVED, None, str(value[1]), "這個值 TileScope AOI 無法對應。", hits)
     extra = f"另有 {len(unresolved)} 處追不到固定數值，請確認。" if unresolved else ""
     if gaps:
         runtime = "；".join(gaps[:3])
@@ -993,7 +993,7 @@ class LegacyProgramAnalyzer:
             ),
             _finding("meter_wheel.cmp_out_width", "CMP Out Width", *_collect(cmp_out, 3, r), convert=int),
             _finding("meter_wheel.cmp_out_polarity", "CMP OUT 極性", *_collect(cmp_out, 1, r), convert=int,
-                     note="VisionFlow 連線時照這個值寫入 CMP_OUT（2026-09-30 前固定為 0）。"),
+                     note="TileScope AOI 連線時照這個值寫入 CMP_OUT（2026-09-30 前固定為 0）。"),
             _finding(
                 "meter_wheel.reverse_direction",
                 "反向計數",
@@ -1006,18 +1006,18 @@ class LegacyProgramAnalyzer:
         for call in ci_mode:
             mode, debounce = _single(r, call, 1), _single(r, call, 2)
             if (mode is not None and mode != 0) or (debounce is not None and debounce != 1):
-                out.append(_warning("warn.ci_mode", "米輪計數模式", f"原程式計數模式 {mode}、防抖 {debounce}；VisionFlow 固定為 0（正交）與 1（1 µs）。", [call]))
+                out.append(_warning("warn.ci_mode", "米輪計數模式", f"原程式計數模式 {mode}、防抖 {debounce}；TileScope AOI 固定為 0（正交）與 1（1 µs）。", [call]))
                 break
         for call in cmp_out:
-            # Polarity is a VisionFlow setting (imported above); only the output mode is still fixed.
+            # Polarity is a TileScope AOI setting (imported above); only the output mode is still fixed.
             mode = _single(r, call, 2)
             if mode is not None and mode != 1:
-                out.append(_warning("warn.cmp_out", "CMP OUT 輸出方式", f"原程式 CMP OUT 輸出模式 {mode}；VisionFlow 固定為 1（脈衝）。", [call]))
+                out.append(_warning("warn.cmp_out", "CMP OUT 輸出方式", f"原程式 CMP OUT 輸出模式 {mode}；TileScope AOI 固定為 1（脈衝）。", [call]))
                 break
         for call in compare_mode:
             mode = _single(r, call, 1)
             if mode is not None and mode != 2:
-                out.append(_warning("warn.compare_mode", "Compare 模式", f"原程式 Compare 模式為 {mode}；VisionFlow 固定為 2（自動遞增）。", [call]))
+                out.append(_warning("warn.compare_mode", "Compare 模式", f"原程式 Compare 模式為 {mode}；TileScope AOI 固定為 2（自動遞增）。", [call]))
                 break
         out.append(self._timing("info.compare_value", "Compare 寫入時機", self.lsi("LSI8181_compare_value_set")))
         out.append(self._timing("info.encoder_value", "Encoder 寫入時機", self.lsi("LSI8181_counter_set")))
@@ -1032,7 +1032,7 @@ class LegacyProgramAnalyzer:
             values = self.resolver.values(call.args[1], call.file, call.index) if len(call.args) > 1 else set()
             shown = "、".join(str(v) for v in sorted(values, key=str)) if values else (call.args[1] if len(call.args) > 1 else "?")
             parts.append(f"{hit.method or hit.file} 寫入 {shown}")
-        note = "若是在觸發或開始取像的方法裡寫入，對應 VisionFlow「外部觸發時自動寫入已存 Compare／Encoder 值」。"
+        note = "若是在觸發或開始取像的方法裡寫入，對應 TileScope AOI「外部觸發時自動寫入已存 Compare／Encoder 值」。"
         return ImportFinding(key, label, STATUS_INFO, None, "；".join(parts), note, tuple(c.hit() for c in calls))
 
     # --- PCIe-1730 Sensor relay -------------------------------------------------------
@@ -1060,7 +1060,7 @@ class LegacyProgramAnalyzer:
             Call(s, m.start(), ()) for s in self.files for m in re.finditer(r"\bDiintChannels\b|\.Interrupt\s*\+=", s.text)
         ]
         if interrupts:
-            out.append(_warning("warn.di_interrupt", "Sensor 偵測方式", "原程式用 DI 中斷偵測 Sensor；VisionFlow 用定時讀取，延遲約為「DI 讀取間隔」。", interrupts[:3]))
+            out.append(_warning("warn.di_interrupt", "Sensor 偵測方式", "原程式用 DI 中斷偵測 Sensor；TileScope AOI 用定時讀取，延遲約為「DI 讀取間隔」。", interrupts[:3]))
         return out
 
     def _whole_port_reads(self, whole: list[Call]) -> list[ImportFinding | None]:
@@ -1209,7 +1209,7 @@ class LegacyProgramAnalyzer:
                 for c in shaft[:4]
             )
             out.append(
-                _warning("warn.shaft_encoder", "擷取卡 Shaft Encoder", f"原程式在擷取卡做了除頻／倍頻（{text}），影像比例也受它影響；VisionFlow 請用同一份 CCF。", shaft[:4])
+                _warning("warn.shaft_encoder", "擷取卡 Shaft Encoder", f"原程式在擷取卡做了除頻／倍頻（{text}），影像比例也受它影響；TileScope AOI 請用同一份 CCF。", shaft[:4])
             )
         return out
 
@@ -1335,7 +1335,7 @@ class LegacyProgramAnalyzer:
                     STATUS_INFO,
                     None,
                     "原程式沒有獨立的開燈指令，靠送出亮度開燈",
-                    "這是正常的：VisionFlow 開燈時送亮度範本（用面板上的亮度），關燈時送亮度 0；「開燈指令」留空即可。",
+                    "這是正常的：TileScope AOI 開燈時送亮度範本（用面板上的亮度），關燈時送亮度 0；「開燈指令」留空即可。",
                     template.sources,
                 )
             )

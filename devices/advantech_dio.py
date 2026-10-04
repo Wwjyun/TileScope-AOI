@@ -5,6 +5,7 @@ import threading
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
+from core.env_names import env_value
 from devices.ccd_models import DeviceAvailability, DeviceError, SensorRelaySettings
 from devices.interfaces import DigitalIo
 
@@ -21,7 +22,7 @@ ASSEMBLY_FILE_NAME = "Automation.BDaq4.dll"
 ASSEMBLY_FILE_NAMES = (ASSEMBLY_FILE_NAME, "Automation.BDaq.dll")
 ASSEMBLY_NAME = "Automation.BDaq4"
 NAMESPACE = "Automation.BDaq"
-DLL_PATH_ENV = "VISIONFLOW_BDAQ_DLL"
+DLL_PATH_ENV = "TILESCOPE_BDAQ_DLL"
 # DAQNavi installs the assembly into the .NET GAC (4.x and the older 2.x GAC); the SDK keeps copies.
 DEFAULT_SEARCH_DIRS = (
     Path(r"C:\Windows\Microsoft.NET\assembly\GAC_MSIL\Automation.BDaq4"),
@@ -91,7 +92,7 @@ def explain_missing(
 
 def _search(assembly_path, environ, search_dirs) -> tuple[Path | None, str]:
     env = os.environ if environ is None else environ
-    for label, explicit in (("設定的 DLL 位置", assembly_path), (DLL_PATH_ENV, env.get(DLL_PATH_ENV))):
+    for label, explicit in (("設定的 DLL 位置", assembly_path), (DLL_PATH_ENV, env_value("BDAQ_DLL", env))):
         if clean_path_text(explicit or ""):
             found, reason = _explicit_candidate(explicit)
             return found, "" if found else f"{label}：{reason}"

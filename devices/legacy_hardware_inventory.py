@@ -17,17 +17,17 @@ from devices.legacy_program_import import (
 
 # ============================================================
 # Everything the original program writes to the meter wheel and the grabber, not only the values
-# VisionFlow can apply. Each call becomes one row: the function, its argument values as traced, and
-# how VisionFlow handles each argument (a setting it applies, a value it fixes, or nothing), so a
+# TileScope AOI can apply. Each call becomes one row: the function, its argument values as traced, and
+# how TileScope AOI handles each argument (a setting it applies, a value it fixes, or nothing), so a
 # photographed confirmation table shows every missing setting at once. A second finding lists what
-# the program does after the Sensor DI, in order, next to VisionFlow's own Sensor capture sequence.
+# the program does after the Sensor DI, in order, next to TileScope AOI's own Sensor capture sequence.
 # ============================================================
 
 
 @dataclass(frozen=True)
 class Argument:
     label: str
-    # "" -> informational; "setting:<text>" -> a VisionFlow setting; "fixed:<value>" -> VisionFlow writes <value>.
+    # "" -> informational; "setting:<text>" -> a TileScope AOI setting; "fixed:<value>" -> TileScope AOI writes <value>.
     handling: str = ""
 
 
@@ -62,7 +62,7 @@ LSI_FUNCTIONS: dict[str, tuple[str, tuple[Argument, ...]]] = {
 }
 _READ_ONLY = ("_read", "_info", "LSI8181_initial", "LSI8181_close")
 
-# Sapera acquisition parameters and camera features VisionFlow applies itself; everything else comes
+# Sapera acquisition parameters and camera features TileScope AOI applies itself; everything else comes
 # from the CCF or is not applied.
 SAPERA_HANDLED = {
     "CROP_HEIGHT": "Length（影像長度）",
@@ -108,7 +108,7 @@ def lsi_inventory(collector) -> list[ImportFinding]:
         calls = find_calls(collector.files, dll_aliases(collector.files, name))
         if not calls:
             continue
-        title, arguments = LSI_FUNCTIONS.get(name, ("VisionFlow 沒有對應的功能", ()))
+        title, arguments = LSI_FUNCTIONS.get(name, ("TileScope AOI 沒有對應的功能", ()))
         rows: list[str] = []
         differs: list[str] = []
         for call in calls[:4]:
@@ -123,19 +123,19 @@ def lsi_inventory(collector) -> list[ImportFinding]:
                     value = _single_int(resolver, call, position)
                     fixed = int(argument.handling.split(":", 1)[1])
                     if value is not None and value != fixed:
-                        differs.append(f"{argument.label} 原程式 {value}、VisionFlow 固定 {fixed}")
+                        differs.append(f"{argument.label} 原程式 {value}、TileScope AOI 固定 {fixed}")
             rows.append(f"{call.hit().method or call.hit().file}：" + "、".join(parts))
         handled = [a for a in arguments if a.handling.startswith("setting:")]
         fixed = [a for a in arguments if a.handling.startswith("fixed:")]
         if name not in LSI_FUNCTIONS:
-            note = "VisionFlow 不會呼叫這個函式；若它影響取像，請回報以便新增。"
+            note = "TileScope AOI 不會呼叫這個函式；若它影響取像，請回報以便新增。"
             status = STATUS_WARNING
         else:
             pieces = []
             if handled:
-                pieces.append("可在 VisionFlow 設定：" + "、".join(a.handling.split(":", 1)[1] for a in handled))
+                pieces.append("可在 TileScope AOI 設定：" + "、".join(a.handling.split(":", 1)[1] for a in handled))
             if fixed:
-                pieces.append("VisionFlow 固定：" + "、".join(f"{a.label}={a.handling.split(':', 1)[1]}" for a in fixed))
+                pieces.append("TileScope AOI 固定：" + "、".join(f"{a.label}={a.handling.split(':', 1)[1]}" for a in fixed))
             if differs:
                 pieces.append("與原程式不同：" + "；".join(dict.fromkeys(differs)))
             note = "。".join(pieces) or "只記錄。"
@@ -149,7 +149,7 @@ def lsi_inventory(collector) -> list[ImportFinding]:
 
 
 def sapera_inventory(collector) -> list[ImportFinding]:
-    """Every SetParameter(Prm.X, …) and SetFeatureValue("X", …) with its value and VisionFlow's handling."""
+    """Every SetParameter(Prm.X, …) and SetFeatureValue("X", …) with its value and TileScope AOI's handling."""
     resolver = collector.resolver
     groups: dict[str, list[Call]] = {}
     for call in find_calls(collector.files, ["SetParameter"], member=True):
@@ -167,7 +167,7 @@ def sapera_inventory(collector) -> list[ImportFinding]:
             f"{c.hit().method or c.hit().file}：{_value_text(resolver, c, 1)}" for c in calls[:4]
         )
         handled = SAPERA_HANDLED.get(name)
-        note = f"VisionFlow 設定：{handled}。" if handled else "VisionFlow 不寫這個參數，由 CCF 決定；若原程式的值和 CCF 不同，請回報以便新增。"
+        note = f"TileScope AOI 設定：{handled}。" if handled else "TileScope AOI 不寫這個參數，由 CCF 決定；若原程式的值和 CCF 不同，請回報以便新增。"
         out.append(
             ImportFinding(f"inventory.sapera.{name}", f"擷取卡／相機 {name}", STATUS_INFO if handled else STATUS_WARNING, None, values, note,
                           tuple(c.hit() for c in calls))
@@ -296,16 +296,16 @@ def sensor_flow(collector) -> list[ImportFinding]:
     texts = [step[0] for step in steps]
     differences = []
     if any(t.startswith("Encoder 設為") for t in texts):
-        differences.append("原程式每次觸發會寫 Encoder；VisionFlow 預設不改 Encoder（可在 Sensor 面板勾「每次觸發先把 Encoder 設為」）")
+        differences.append("原程式每次觸發會寫 Encoder；TileScope AOI 預設不改 Encoder（可在 Sensor 面板勾「每次觸發先把 Encoder 設為」）")
     if any(t.startswith("Compare 設為") for t in texts):
-        differences.append("原程式每次觸發會寫 Compare；VisionFlow 預設把 Compare 設在 Encoder 下一格（可用 Sensor 面板「起拍偏移」對應）")
+        differences.append("原程式每次觸發會寫 Compare；TileScope AOI 預設把 Compare 設在 Encoder 下一格（可用 Sensor 面板「起拍偏移」對應）")
     if any(t.startswith("等待") for t in texts):
-        differences.append("原程式在觸發後有等待；VisionFlow 不延遲，請確認這段等待是否影響起拍位置")
+        differences.append("原程式在觸發後有等待；TileScope AOI 不延遲，請確認這段等待是否影響起拍位置")
     if any(t.startswith("Grab") for t in texts):
-        differences.append("原程式用 Grab 連續取像，不是每次 Snap 一張；VisionFlow 軟體觸發是每個 Sensor Snap 一張")
+        differences.append("原程式用 Grab 連續取像，不是每次 Snap 一張；TileScope AOI 軟體觸發是每個 Sensor Snap 一張")
     if not any(t.startswith("Wait") for t in texts):
         differences.append("原程式 Snap 後沒有 Wait；它是否等上一張完成要看其他程式碼")
-    note = "VisionFlow 的做法：DI 有效 → 讀 Encoder → Compare 設在下一格（或依 Sensor 面板設定）→ Snap；上一張未完成時略過。"
+    note = "TileScope AOI 的做法：DI 有效 → 讀 Encoder → Compare 設在下一格（或依 Sensor 面板設定）→ Snap；上一張未完成時略過。"
     if differences:
         note += " 差異：" + "；".join(differences) + "。"
     return [

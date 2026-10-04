@@ -52,11 +52,11 @@ def main() -> int:
     product_version = f"{args.version}+{commit}" if commit != "unknown" else args.version
     description = args.product_name
     string_values = {
-        "CompanyName": "VisionFlow",
+        "CompanyName": "TileScope",
         "FileDescription": description,
         "FileVersion": args.version,
         "InternalName": args.product_name,
-        "LegalCopyright": "VisionFlow contributors",
+        "LegalCopyright": "TileScope contributors",
         "OriginalFilename": args.executable_name,
         "ProductName": args.product_name,
         "ProductVersion": product_version,

@@ -283,6 +283,45 @@ class SettingsStoreTests(unittest.TestCase):
             result = settings_store.import_legacy_settings(reader=lambda: {}, path=path)
             self.assertEqual(result, {"imported": []})
 
+    def test_settings_file_migrates_legacy_dir_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            legacy = root / "legacy" / "desktop_settings.json"
+            legacy.parent.mkdir()
+            legacy.write_text(json.dumps({"output_dir": "C:/legacy_out"}), encoding="utf-8")
+            new = root / "new" / "desktop_settings.json"
+            self.assertTrue(settings_store.migrate_legacy_settings_file(path=new, legacy=legacy))
+            self.assertEqual(settings_store.read_settings(new)["output_dir"], "C:/legacy_out")
+            # A second run is a no-op once the new file exists.
+            self.assertFalse(settings_store.migrate_legacy_settings_file(path=new, legacy=legacy))
+
+    def test_settings_file_migration_skips_when_legacy_absent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            new = root / "new" / "desktop_settings.json"
+            self.assertFalse(settings_store.migrate_legacy_settings_file(
+                path=new, legacy=root / "missing" / "desktop_settings.json",
+            ))
+            self.assertFalse(new.exists())
+
+    def test_import_legacy_settings_reads_new_registry_key_first(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "settings.json"
+
+            def fake_read(key):
+                if key == settings_store.NEW_REGISTRY_KEY:
+                    return {"output/directory": "C:/new_out"}
+                if key == settings_store.LEGACY_REGISTRY_KEY:
+                    return {"output/directory": "C:/old_out", "paths/image": "C:/img.bmp"}
+                return {}
+
+            with patch.object(settings_store, "read_registry_values", side_effect=fake_read):
+                result = settings_store.import_legacy_settings(path=path)
+            self.assertEqual(sorted(result["imported"]), ["last_image", "output_dir"])
+            loaded = settings_store.read_settings(path)
+            self.assertEqual(loaded["output_dir"], "C:/new_out")
+            self.assertEqual(loaded["last_image"], "C:/img.bmp")
+
 
 class ImagePreviewTests(unittest.TestCase):
     def test_preview_cache_reuse(self):

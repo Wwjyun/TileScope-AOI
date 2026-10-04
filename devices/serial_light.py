@@ -12,7 +12,7 @@ from devices.interfaces import LightController
 # ============================================================
 # RS-232 light controller through .NET System.IO.Ports.SerialPort (pythonnet, .NET Framework) --
 # the same class the machine's original C# program uses, so no serial package is added. The
-# controller brand is not assumed: VisionFlow sends the command text the original program sends
+# controller brand is not assumed: TileScope AOI sends the command text the original program sends
 # (read by the smart import or typed by an engineer). Commands are text with escapes; see
 # `encode_command`.
 # ============================================================

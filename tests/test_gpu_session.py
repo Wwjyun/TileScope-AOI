@@ -166,7 +166,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
 
     def test_gui_session_cache_keeps_session_for_non_gpu_edits_and_rebuilds_for_gpu_changes(self):
         sessions = [Mock(name="first"), Mock(name="second"), Mock(name="third")]
-        with tempfile.TemporaryDirectory(prefix="visionflow_gui_session_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_gui_session_") as temporary:
             root = Path(temporary)
 
             def enable_gpu(recipe):
@@ -241,7 +241,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
 
     def test_session_in_use_is_closed_only_after_its_last_user_returns(self):
         sessions = [Mock(name="running"), Mock(name="replacement")]
-        with tempfile.TemporaryDirectory(prefix="visionflow_gui_session_use_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_gui_session_use_") as temporary:
             recipe_path = _write_recipe(Path(temporary) / "recipe.yaml")
             cache = GpuExecutionSessionCache()
             with patch.object(GpuExecutionSession, "from_recipe", side_effect=sessions):
@@ -258,7 +258,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
         self.assertEqual((cache._users, cache._retired), ({}, {}))
 
     def _warm_up_with(self, session, image_path=None, pipeline=None):
-        with tempfile.TemporaryDirectory(prefix="visionflow_warmup_cache_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_warmup_cache_") as temporary:
             recipe_path = _write_recipe(Path(temporary) / "recipe.yaml")
             cache = GpuExecutionSessionCache()
             progress = []
@@ -347,7 +347,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
 
     def test_gui_session_cache_explicit_invalidation_closes_once(self):
         fake_session = Mock()
-        with tempfile.TemporaryDirectory(prefix="visionflow_gui_session_close_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_gui_session_close_") as temporary:
             recipe_path = _write_recipe(Path(temporary) / "recipe.yaml")
             cache = GpuExecutionSessionCache()
             with patch.object(
@@ -383,7 +383,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
             "save_json": False,
         }
 
-        with tempfile.TemporaryDirectory(prefix="visionflow_resident_pipeline_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_resident_pipeline_") as temporary:
             image_path = Path(temporary) / "input.png"
             encoded, buffer = cv2.imencode(".png", np.zeros((1300, 1200, 3), dtype=np.uint8))
             self.assertTrue(encoded)
@@ -475,7 +475,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
             pipeline.detector_manager.create_enabled = Mock(return_value=[detector])
             return pipeline.run(image_path), runtime
 
-        with tempfile.TemporaryDirectory(prefix="visionflow_resident_anchor_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_resident_anchor_") as temporary:
             image_path = Path(temporary) / "input.png"
             template_path = Path(temporary) / "anchor.png"
             self.assertTrue(cv2.imwrite(str(image_path), image))
@@ -525,7 +525,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
             key: False for key in ("save_overlay", "save_ng_tiles", "save_csv", "save_matrix_csv", "save_json")
         }
         results = {}
-        with tempfile.TemporaryDirectory(prefix="visionflow_tiling_trap_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_tiling_trap_") as temporary:
             image_path = Path(temporary) / "input.png"
             self.assertTrue(cv2.imwrite(str(image_path), np.zeros((320, 320, 3), dtype=np.uint8)))
             for label, mode, fallback in (("auto", "auto", True), ("strict", "cuda", False)):
@@ -590,7 +590,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
             "save_json": False,
         }
 
-        with tempfile.TemporaryDirectory(prefix="visionflow_fault_scope_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_fault_scope_") as temporary:
             image_path = Path(temporary) / "input.png"
             encoded, buffer = cv2.imencode(".png", np.zeros((600, 600, 3), dtype=np.uint8))
             self.assertTrue(encoded)
@@ -641,7 +641,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
             key: False for key in ("save_overlay", "save_ng_tiles", "save_csv", "save_matrix_csv", "save_json")
         }
         reports = {}
-        with tempfile.TemporaryDirectory(prefix="visionflow_vram_low_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_vram_low_") as temporary:
             image_path = Path(temporary) / "input.png"
             encoded, buffer = cv2.imencode(".png", image)
             self.assertTrue(encoded)
@@ -690,7 +690,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
             key: False for key in ("save_overlay", "save_ng_tiles", "save_csv", "save_matrix_csv", "save_json")
         }
 
-        with tempfile.TemporaryDirectory(prefix="visionflow_vram_strict_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_vram_strict_") as temporary:
             image_path = Path(temporary) / "input.png"
             encoded, buffer = cv2.imencode(".png", np.zeros((600, 700, 3), dtype=np.uint8))
             self.assertTrue(encoded)
@@ -742,7 +742,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
             "save_matrix_csv": False,
             "save_json": False,
         }
-        with tempfile.TemporaryDirectory(prefix="visionflow_gpu_session_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_gpu_session_") as temporary:
             image_path = Path(temporary) / "input.png"
             encoded, buffer = cv2.imencode(".png", np.zeros((1300, 1200, 3), dtype=np.uint8))
             self.assertTrue(encoded)
@@ -791,7 +791,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
                 detail={},
             )
 
-        with tempfile.TemporaryDirectory(prefix="visionflow_batch_session_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_batch_session_") as temporary:
             processor = BatchInspectionProcessor(
                 Path(temporary),
                 ROOT / "recipes" / "DEMO3.yaml",
@@ -822,7 +822,7 @@ class GpuExecutionSessionTests(unittest.TestCase):
             "outputs": {},
             "tiles": [],
         }
-        with tempfile.TemporaryDirectory(prefix="visionflow_monitor_session_") as temporary:
+        with tempfile.TemporaryDirectory(prefix="tilescope_monitor_session_") as temporary:
             processor = FolderMonitorProcessor(
                 Path(temporary),
                 ROOT / "recipes" / "DEMO3.yaml",

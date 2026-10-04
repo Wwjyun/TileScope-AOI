@@ -731,7 +731,7 @@ class CcdScreen(QWidget):
         self.cmp_polarity_input = self.gate.register(NumStepper(0, *CMP_OUT_POLARITY_RANGE))
         self.cmp_polarity_input.setToolTip(
             "照原廠程式 Compare 視窗的 CMP output polarity 填入。原廠若顯示成兩個位元或勾選框（例如 1、0），"
-            "那是二進位，請換成十進位（二進位 10 = 2）；不確定時兩個都試。VisionFlow 連線時一律啟用 CMP output。"
+            "那是二進位，請換成十進位（二進位 10 = 2）；不確定時兩個都試。TileScope AOI 連線時一律啟用 CMP output。"
         )
         self.cmp_polarity_set_button = self.gate.register(_button("設定"))
         self.cmp_polarity_set_button.clicked.connect(
@@ -798,7 +798,7 @@ class CcdScreen(QWidget):
         self.sensor_snap_encoder_input = self.gate.register(_fixed_width(NumStepper(0, *SENSOR_SNAP_ENCODER_RANGE), 120))
         self.sensor_snap_offset_input = self.gate.register(_fixed_width(NumStepper(0, *SENSOR_SNAP_OFFSET_RANGE), 120))
         self.sensor_snap_offset_input.setToolTip(
-            "Sensor 觸發後米輪再走幾格才拍第一行（Compare = Encoder + 這個值）；0 表示下一格就開始，是 VisionFlow 原本的做法。"
+            "Sensor 觸發後米輪再走幾格才拍第一行（Compare = Encoder + 這個值）；0 表示下一格就開始，是 TileScope AOI 原本的做法。"
         )
         form.addRow("軟體觸發起拍", _row(self.sensor_snap_reset_check, self.sensor_snap_encoder_input, stretch_last=False))
         self.sensor_snap_from_wheel_button = self.gate.register(_button("帶入米輪 Encoder／Compare Set 值"))

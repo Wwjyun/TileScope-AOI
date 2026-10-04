@@ -134,7 +134,7 @@ class GpuRoiBatch:
 
 
 class GpuRuntime:
-    """Thread-safe ctypes bridge for the optional VisionFlow CUDA DLL."""
+    """Thread-safe ctypes bridge for the optional TileScope AOI CUDA DLL."""
 
     DEFAULT_DLL = "gpu/visionflow_cuda.dll"
     ABI_VERSION = 1

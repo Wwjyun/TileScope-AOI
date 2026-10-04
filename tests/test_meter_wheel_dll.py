@@ -33,7 +33,7 @@ class SearchOrderTests(unittest.TestCase):
         self.assertEqual(candidates[-1], DLL_NAME, "the Windows search path must stay the last resort")
 
     def test_an_existing_copy_next_to_the_executable_is_tried_first(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_lsi_") as directory:
+        with tempfile.TemporaryDirectory(prefix="tilescope_lsi_") as directory:
             expected = Path(directory) / DLL_NAME
             expected.write_bytes(b"MZ")
             candidates = dll_candidates(environ={}, dll_path=expected)
@@ -52,13 +52,13 @@ class PeInspectionTests(unittest.TestCase):
                          "the interpreter's own DLLs must resolve on any development machine")
 
     def test_a_non_pe_file_is_reported_as_unreadable_instead_of_raising(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_lsi_") as directory:
+        with tempfile.TemporaryDirectory(prefix="tilescope_lsi_") as directory:
             text_file = Path(directory) / "LSI8181_64.dll"
             text_file.write_text("this is not a PE image", encoding="utf-8")
             self.assertIsNone(read_pe_image(text_file))
 
     def test_a_missing_file_is_reported_as_unreadable(self):
-        self.assertIsNone(read_pe_image(Path(tempfile.gettempdir()) / "definitely_absent_visionflow.dll"))
+        self.assertIsNone(read_pe_image(Path(tempfile.gettempdir()) / "definitely_absent_tilescope.dll"))
 
     def test_a_32_bit_dll_is_named_as_a_bitness_mismatch(self):
         if not X86_DLL.is_file():
@@ -85,7 +85,7 @@ class DiagnosisTests(unittest.TestCase):
         self.assertEqual(report.searched, dll_candidates(environ=environ))
 
     def test_a_file_that_is_not_a_dll_reports_a_load_error_without_raising(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_lsi_") as directory:
+        with tempfile.TemporaryDirectory(prefix="tilescope_lsi_") as directory:
             fake = Path(directory) / DLL_NAME
             fake.write_text("not a dll", encoding="utf-8")
             report = diagnose_meter_wheel_dll(dll_path=fake, environ={})
@@ -94,7 +94,7 @@ class DiagnosisTests(unittest.TestCase):
         self.assertIn("LSI DLL", report.summary())
 
     def test_the_report_lines_name_every_fact_the_field_needs(self):
-        with tempfile.TemporaryDirectory(prefix="visionflow_lsi_") as directory:
+        with tempfile.TemporaryDirectory(prefix="tilescope_lsi_") as directory:
             fake = Path(directory) / DLL_NAME
             fake.write_text("not a dll", encoding="utf-8")
             lines = diagnose_meter_wheel_dll(dll_path=fake, environ={}).lines()

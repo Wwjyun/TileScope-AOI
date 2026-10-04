@@ -31,7 +31,7 @@ def main() -> int:
     for x, y in ((17, 21), (160, 24), (300, 180), (45, 290), (400, 300)):
         image[y:y + template.shape[0], x:x + template.shape[1]] = template
 
-    with tempfile.TemporaryDirectory(prefix="visionflow_pattern_gpu_") as temporary:
+    with tempfile.TemporaryDirectory(prefix="tilescope_pattern_gpu_") as temporary:
         template_path = Path(temporary) / "template.png"
         if not cv2.imwrite(str(template_path), template):
             raise RuntimeError("Could not write Pattern Match validation template")
