@@ -1,0 +1,798 @@
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+import time
+import unittest
+from dataclasses import replace
+import unittest.mock
+from pathlib import Path
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+from PySide6.QtWidgets import QApplication
+
+from devices.advantech_dio import AdvantechDigitalIo, explain_missing, locate_assembly
+from devices.ccd_models import (
+    AcquisitionSettings,
+    CameraConnectionSettings,
+    CameraRecipeSettings,
+    CameraState,
+    CcdMachineSettings,
+    DeviceAvailability,
+    DeviceError,
+    SensorRelaySettings,
+    TriggerMode,
+    TriggerSettings,
+)
+from devices.ccd_settings_store import CcdMachineSettingsStore, settings_from_dict, settings_to_dict
+from devices.factory import CcdDevices, UnavailableDigitalIo, create_ccd_devices
+from devices.sensor_relay import MODE_FORWARD, MODE_SNAP, SensorRelay, relay_mode
+from devices.simulated import SimulatedDigitalIo, SimulatedLineScanCamera, SimulatedMeterWheel
+from devices.trigger_diagnosis import TriggerEvidence, diagnose_external_trigger
+from gui.ccd_controller import CcdController
+from gui.screens.ccd_screen import CcdScreen
+
+ENABLED = SensorRelaySettings(enabled=True, di_port=1, di_bit=3, do_port=2, do_bit=5, pulse_ms=0.5, min_interval_ms=50)
+EXTERNAL_ONE_FRAME = TriggerSettings(TriggerMode.EXTERNAL, external_frame_one_frame=True)
+
+
+def _wait_until(predicate, timeout: float = 5.0) -> bool:
+    app = QApplication.instance()
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if app is not None:
+            app.processEvents()
+        if predicate():
+            return True
+        time.sleep(0.002)
+    if app is not None:
+        app.processEvents()
+    return predicate()
+
+
+class FakeClock:
+    def __init__(self):
+        self.now = 100.0
+
+    def __call__(self) -> float:
+        # Every read advances a little so the pulse spin loop always terminates.
+        self.now += 0.0001
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.now += max(0.0, seconds)
+
+
+def _relay(io, settings=ENABLED, mode=MODE_FORWARD, **kwargs) -> tuple[SensorRelay, FakeClock]:
+    clock = FakeClock()
+    relay = SensorRelay(io, settings, mode, clock=clock, sleep=clock.sleep, **kwargs)
+    return relay, clock
+
+
+class RelayModeTests(unittest.TestCase):
+    def test_mode_follows_the_trigger_written_to_the_camera(self):
+        self.assertEqual(relay_mode(ENABLED, EXTERNAL_ONE_FRAME), MODE_FORWARD)
+        self.assertEqual(relay_mode(ENABLED, TriggerSettings(TriggerMode.SOFTWARE)), MODE_SNAP)
+        self.assertIsNone(relay_mode(ENABLED, TriggerSettings(TriggerMode.EXTERNAL)), "lines only; no frame trigger")
+        self.assertIsNone(relay_mode(ENABLED, TriggerSettings(TriggerMode.CONTINUOUS)))
+        self.assertIsNone(relay_mode(ENABLED, None))
+        self.assertIsNone(relay_mode(SensorRelaySettings(), EXTERNAL_ONE_FRAME), "disabled by default")
+
+
+class SensorRelayStepTests(unittest.TestCase):
+    def setUp(self):
+        self.io = SimulatedDigitalIo()
+
+    def test_forward_pulses_the_do_on_each_inactive_to_active_edge(self):
+        relay, clock = _relay(self.io)
+        relay.prepare()
+        self.assertEqual(self.io.writes, [(2, 5, False)], "the DO is parked inactive before polling")
+        self.assertFalse(relay.step())
+        self.io.set_input(1, 3, True)
+        start = clock.now
+        self.assertTrue(relay.step())
+        self.assertEqual(self.io.writes[1:], [(2, 5, True), (2, 5, False)])
+        self.assertGreaterEqual(clock.now - start, 0.0005, "the DO stays active for pulse_ms")
+        self.assertFalse(relay.step(), "a Sensor held active is one edge")
+        stats = relay.stats()
+        self.assertEqual((stats.edges, stats.pulses, stats.di_active), (1, 1, True))
+
+    def test_a_sensor_already_active_at_start_must_clear_first(self):
+        self.io.set_input(1, 3, True)
+        relay, clock = _relay(self.io)
+        relay.prepare()
+        self.assertFalse(relay.step())
+        self.assertFalse(relay.step())
+        self.io.set_input(1, 3, False)
+        relay.step()
+        clock.sleep(1.0)
+        self.io.set_input(1, 3, True)
+        self.assertTrue(relay.step())
+        self.assertEqual(relay.stats().pulses, 1)
+
+    def test_edges_inside_the_minimum_interval_are_ignored_as_bounce(self):
+        relay, clock = _relay(self.io)
+        relay.prepare()
+        relay.step()
+        for _ in range(2):
+            self.io.set_input(1, 3, True)
+            relay.step()
+            self.io.set_input(1, 3, False)
+            relay.step()
+        stats = relay.stats()
+        self.assertEqual((stats.edges, stats.ignored_edges, stats.pulses), (1, 1, 1))
+        clock.sleep(0.1)
+        self.io.set_input(1, 3, True)
+        self.assertTrue(relay.step())
+
+    def test_active_low_inverts_both_the_input_and_the_output(self):
+        settings = SensorRelaySettings(enabled=True, di_active_low=True, do_active_low=True, min_interval_ms=0)
+        self.io.set_input(0, 0, True)  # idle high = inactive
+        relay, _clock = _relay(self.io, settings)
+        relay.prepare()
+        self.assertEqual(self.io.writes, [(0, 0, True)], "inactive DO level is high when active-low")
+        relay.step()
+        self.io.set_input(0, 0, False)
+        self.assertTrue(relay.step())
+        self.assertEqual(self.io.writes[1:], [(0, 0, False), (0, 0, True)])
+
+    def test_snap_mode_hands_the_edge_over_without_touching_the_do(self):
+        edges = []
+        relay, _clock = _relay(self.io, mode=MODE_SNAP, on_edge=lambda: edges.append(1))
+        relay.prepare()
+        relay.step()
+        self.io.set_input(1, 3, True)
+        relay.step()
+        self.assertEqual(edges, [1])
+        self.assertEqual(self.io.writes, [])
+        self.assertEqual((relay.stats().edges, relay.stats().pulses), (1, 0))
+
+    def test_unknown_mode_is_rejected(self):
+        with self.assertRaises(ValueError):
+            SensorRelay(self.io, ENABLED, "both")
+
+
+class SensorRelayThreadTests(unittest.TestCase):
+    def test_thread_relays_edges_and_parks_the_do_when_stopped(self):
+        io = SimulatedDigitalIo()
+        relay = SensorRelay(io, ENABLED.normalized(), MODE_FORWARD)
+        relay.start()
+        try:
+            self.assertTrue(relay.is_running)
+            self.assertTrue(_wait_until(lambda: relay.stats().polls > 2))
+            io.set_input(1, 3, True)
+            self.assertTrue(_wait_until(lambda: relay.stats().pulses == 1))
+        finally:
+            relay.stop()
+        self.assertFalse(relay.is_running)
+        self.assertFalse(io.outputs[(2, 5)])
+
+    def test_a_read_failure_stops_the_thread_and_reports_the_error(self):
+        io = SimulatedDigitalIo()
+        errors = []
+        relay = SensorRelay(io, ENABLED, MODE_SNAP, on_error=errors.append)
+        relay.start()
+        io.fail_reads = True
+        self.assertTrue(_wait_until(lambda: not relay.is_running))
+        relay.stop()
+        self.assertEqual(len(errors), 1)
+        self.assertIn("模擬 DI 讀取失敗", relay.stats().error)
+
+    def test_start_raises_when_the_card_cannot_open(self):
+        relay = SensorRelay(SimulatedDigitalIo(available=False, reason="沒有卡"), ENABLED, MODE_FORWARD)
+        with self.assertRaisesRegex(DeviceError, "沒有卡"):
+            relay.start()
+        self.assertFalse(relay.is_running)
+
+
+class SensorRelaySettingsTests(unittest.TestCase):
+    def test_normalization_clamps_and_defaults(self):
+        settings = SensorRelaySettings(
+            device="  ", di_port=99, di_bit=-1, pulse_ms=0, min_interval_ms=-5, poll_interval_ms=500
+        ).normalized()
+        self.assertEqual(settings.device, "PCIe-1730,BID#0")
+        self.assertEqual((settings.di_port, settings.di_bit), (15, 0))
+        self.assertEqual((settings.pulse_ms, settings.min_interval_ms, settings.poll_interval_ms), (0.1, 0, 20.0))
+        self.assertFalse(SensorRelaySettings().enabled)
+
+    def test_store_round_trip_and_legacy_files(self):
+        with tempfile.TemporaryDirectory() as temp:
+            store = CcdMachineSettingsStore(Path(temp) / "ccd.json")
+            machine = CcdMachineSettings(sensor_relay=ENABLED)
+            store.save(machine)
+            self.assertEqual(store.load().sensor_relay, ENABLED.normalized())
+            payload = json.loads(store.path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["sensor_relay"]["do_bit"], 5)
+            del payload["sensor_relay"]
+            self.assertEqual(settings_from_dict(payload).sensor_relay, SensorRelaySettings())
+            payload = settings_to_dict(machine)
+            payload["sensor_relay"]["pulse_ms"] = "fast"
+            store.path.write_text(json.dumps(payload), encoding="utf-8")
+            self.assertEqual(store.load(), CcdMachineSettings())
+            self.assertIn("sensor_relay.pulse_ms", store.last_error)
+
+
+class FakeBdaq:
+    """Stand-in for the Automation.BDaq namespace as pythonnet exposes it."""
+
+    def __init__(self, read_result=("ErrorCode.Success", 1), write_result="Success", fail_open=False):
+        outer = self
+        self.read_result = read_result
+        self.write_result = write_result
+        self.calls: list[tuple] = []
+        self.disposed = 0
+
+        class Control:
+            def __init__(self):
+                if fail_open:
+                    raise RuntimeError("DeviceNotExist")
+                self.SelectedDevice = None
+
+            def ReadBit(self, port, bit, _out):
+                outer.calls.append(("read", port, bit))
+                return outer.read_result
+
+            def WriteBit(self, port, bit, value):
+                outer.calls.append(("write", port, bit, value))
+                return outer.write_result
+
+            def Dispose(self):
+                outer.disposed += 1
+
+        self.InstantDiCtrl = Control
+        self.InstantDoCtrl = Control
+        self.DeviceInformation = lambda description: ("device", description)
+
+
+class AdvantechDigitalIoTests(unittest.TestCase):
+    def _io(self, bdaq: FakeBdaq) -> AdvantechDigitalIo:
+        return AdvantechDigitalIo(namespace_loader=lambda _path: bdaq)
+
+    def test_reads_and_writes_through_the_bdaq_controls(self):
+        bdaq = FakeBdaq()
+        io = self._io(bdaq)
+        io.connect(ENABLED)
+        self.assertTrue(io.is_connected)
+        self.assertTrue(io.read_bit(1, 3))
+        io.write_bit(2, 5, True)
+        io.write_bit(2, 5, False)
+        self.assertEqual(bdaq.calls, [("read", 1, 3), ("write", 2, 5, 1), ("write", 2, 5, 0)])
+        io.close()
+        self.assertFalse(io.is_connected)
+        self.assertEqual(bdaq.disposed, 2)
+
+    def test_a_device_number_is_passed_as_a_number(self):
+        seen = []
+        bdaq = FakeBdaq()
+        bdaq.DeviceInformation = lambda device: seen.append(device) or ("device", device)
+        io = self._io(bdaq)
+        io.connect(SensorRelaySettings(device="0"))
+        self.assertEqual(seen, [0, 0])
+
+    def test_vendor_error_codes_become_operator_errors(self):
+        io = self._io(FakeBdaq(read_result=("ErrorCode.ErrorPrivilegeNotHeld", 0), write_result="ErrorFuncBusy"))
+        io.connect(ENABLED)
+        with self.assertRaisesRegex(DeviceError, "ErrorPrivilegeNotHeld"):
+            io.read_bit(0, 0)
+        with self.assertRaisesRegex(DeviceError, "ErrorFuncBusy"):
+            io.write_bit(0, 0, True)
+
+    def test_open_failure_names_the_device_and_the_original_program(self):
+        io = self._io(FakeBdaq(fail_open=True))
+        with self.assertRaisesRegex(DeviceError, "PCIe-1730,BID#0.*原機台程式"):
+            io.connect(SensorRelaySettings())
+        self.assertFalse(io.is_connected)
+        with self.assertRaisesRegex(DeviceError, "未連線"):
+            io.read_bit(0, 0)
+
+    def test_missing_daqnavi_is_reported_without_loading_dotnet(self):
+        with tempfile.TemporaryDirectory() as temp:
+            empty = (Path(temp),)
+            self.assertIsNone(locate_assembly("", {}, empty))
+            self.assertIsNone(locate_assembly(str(Path(temp) / "missing.dll"), {}, empty))
+            nested = Path(temp) / "v4.0" / "Automation.BDaq4.dll"
+            nested.parent.mkdir()
+            nested.write_bytes(b"")
+            self.assertEqual(locate_assembly("", {}, empty), nested)
+            self.assertEqual(locate_assembly("", {"VISIONFLOW_BDAQ_DLL": str(nested)}, ()), nested)
+        io = AdvantechDigitalIo(assembly_path=str(Path(temp) / "gone.dll"), environ={})
+        availability = io.availability()
+        self.assertFalse(availability.available)
+        self.assertIn("DAQNavi", availability.reason)
+        with self.assertRaisesRegex(DeviceError, "DAQNavi"):
+            io.connect(SensorRelaySettings())
+
+    def test_pasted_quotes_folders_and_the_legacy_dll_name_are_accepted(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            dll = root / "Advantech" / "Automation.BDaq4.dll"
+            dll.parent.mkdir()
+            dll.write_bytes(b"")
+            for text in (f'"{dll}"', f"  '{dll}'  ", str(dll.parent), f'"{dll.parent}"'):
+                with self.subTest(text):
+                    self.assertEqual(locate_assembly(text, {}, ()), dll)
+            legacy = root / "old" / "Automation.BDaq.dll"
+            legacy.parent.mkdir()
+            legacy.write_bytes(b"")
+            self.assertEqual(locate_assembly(str(legacy.parent), {}, ()), legacy)
+            self.assertEqual(locate_assembly("", {}, (root / "old",)), legacy)
+            self.assertIn("不存在", explain_missing(str(root / "nope.dll"), {}, ()))
+            empty = root / "empty"
+            empty.mkdir()
+            self.assertIn("裡沒有", explain_missing(str(empty), {}, ()))
+            self.assertIn("預設安裝位置", explain_missing("", {}, (empty,)))
+            io = AdvantechDigitalIo(assembly_path=f'"{dll}"', environ={})
+            self.assertTrue(io.availability().available)
+            reason = AdvantechDigitalIo(assembly_path=str(empty), environ={}).availability().reason
+            self.assertIn("瀏覽", reason)
+            self.assertIn(str(empty), reason)
+        self.assertEqual(SensorRelaySettings(assembly_path=' "C:\\x\\a.dll" ').normalized().assembly_path, "C:\\x\\a.dll")
+
+    def test_factory_wiring(self):
+        self.assertFalse(CcdDevices(SimulatedLineScanCamera(auto_emit=False), SimulatedMeterWheel()).digital_io.availability().available)
+        self.assertIsInstance(create_ccd_devices({"VISIONFLOW_CCD_SIMULATOR": "1"}).digital_io, SimulatedDigitalIo)
+        self.assertIsInstance(create_ccd_devices({}).digital_io, AdvantechDigitalIo)
+        with self.assertRaises(DeviceError):
+            UnavailableDigitalIo().read_bit(0, 0)
+
+
+class RelayDiagnosisTests(unittest.TestCase):
+    def _evidence(self, **values) -> TriggerEvidence:
+        base = dict(
+            waits_for_trigger=True,
+            triggered=False,
+            encoder_delta=30,
+            length_lines=10,
+            compare_increment=1,
+            relay_forwarding=True,
+            relay_di_label="DI port 1 bit 3",
+            relay_do_label="DO port 2 bit 5",
+        )
+        base.update(values)
+        return TriggerEvidence(**base)
+
+    def test_no_di_edge_points_at_the_sensor_side_of_the_io_card(self):
+        diagnosis = diagnose_external_trigger(self._evidence(relay_di_active=False))
+        self.assertEqual(diagnosis.code, "no_relay_input")
+        self.assertIn("DI port 1 bit 3", diagnosis.causes[0].why)
+        self.assertTrue(any("Sensor 中繼（PCIe-1730）" in fact for fact in diagnosis.facts))
+        self.assertIn("讀取 DI", diagnosis.next_step)
+
+    def test_a_di_stuck_active_is_ranked_first(self):
+        diagnosis = diagnose_external_trigger(self._evidence(relay_di_active=True))
+        self.assertEqual(diagnosis.code, "no_relay_input")
+        self.assertIn("一直是有效", diagnosis.causes[0].title)
+
+    def test_pulses_without_a_grabber_trigger_point_at_the_do_side(self):
+        diagnosis = diagnose_external_trigger(self._evidence(relay_edges=3, relay_pulses=3))
+        self.assertEqual(diagnosis.code, "relay_not_received")
+        self.assertIn("3 次 DO 脈衝", diagnosis.headline)
+        self.assertIn("集極開路", diagnosis.causes[1].why)
+
+    def test_without_the_relay_the_direct_wiring_diagnosis_is_unchanged(self):
+        diagnosis = diagnose_external_trigger(self._evidence(relay_forwarding=False))
+        self.assertEqual(diagnosis.code, "no_trigger")
+        self.assertFalse(any("Sensor 中繼" in fact for fact in diagnosis.facts))
+
+    def test_waiting_is_not_an_error_before_two_lengths(self):
+        self.assertEqual(diagnose_external_trigger(self._evidence(encoder_delta=5)).code, "waiting")
+
+
+class ControllerSensorRelayTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        self._temp = tempfile.TemporaryDirectory()
+        self.root = Path(self._temp.name)
+        self.camera = SimulatedLineScanCamera(width=24, auto_emit=False)
+        self.meter_wheel = SimulatedMeterWheel()
+        self.io = SimulatedDigitalIo()
+        self.store = CcdMachineSettingsStore(self.root / "ccd.json")
+        self.screen = CcdScreen()
+        self.screen.set_mode("admin")
+        self.controller = CcdController(CcdDevices(self.camera, self.meter_wheel, self.io), self.store)
+        self.controller.attach(self.screen)
+        self.notices: list[tuple[str, str]] = []
+        self.messages: list[str] = []
+        self.controller.notice.connect(lambda message, kind: self.notices.append((message, kind)))
+        self.controller.status_message.connect(self.messages.append)
+
+    def tearDown(self):
+        self.controller.close()
+        self._temp.cleanup()
+
+    def _setup(self, trigger: TriggerSettings, relay: SensorRelaySettings = ENABLED, length: int = 10) -> None:
+        self.assertTrue(self.controller.apply_sensor_relay_settings(relay))
+        self.controller.apply_camera_settings(
+            CameraConnectionSettings(),
+            CameraRecipeSettings(acquisition=AcquisitionSettings(length_lines=length), trigger=trigger),
+        )
+        self.controller.connect_camera()
+        self.assertTrue(self.controller.connect_meter_wheel(0))
+        self.controller.apply_compare_increment(1)
+        self.controller.set_cmp_out_width(10)  # the camera machine's original program uses 10
+        self.controller.set_encoder(0)
+
+    def _edge(self, value: bool = True) -> None:
+        self.io.set_input(1, 3, value)
+
+    def test_external_one_frame_preview_forwards_the_sensor_to_the_grabber_do(self):
+        self._setup(EXTERNAL_ONE_FRAME)
+        self.screen.preview_button.click()
+        self.assertTrue(self.controller.sensor_relay_running)
+        self.assertEqual(self.controller.sensor_relay_stats.mode, MODE_FORWARD)
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.polls > 1))
+        self._edge()
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.pulses == 1))
+        self.assertIn((2, 5, True), self.io.writes)
+        self.assertTrue(_wait_until(lambda: "DO 脈衝 1 次" in self.screen.sensor_relay_stats_label.text()))
+
+        self.screen.stop_button.click()
+        self.assertFalse(self.controller.sensor_relay_running)
+        self.assertFalse(self.io.is_connected, "the card is released when the relay stops")
+        self.assertFalse(self.io.outputs[(2, 5)])
+        self.assertIn("已停止", self.screen.sensor_relay_stats_label.text())
+
+    def test_disabled_relay_and_other_trigger_modes_never_open_the_card(self):
+        self._setup(EXTERNAL_ONE_FRAME, SensorRelaySettings())
+        self.controller.start_preview()
+        self.assertFalse(self.controller.sensor_relay_running)
+        self.controller.stop_preview()
+        self.controller.apply_sensor_relay_settings(ENABLED)
+        self.controller.apply_camera_settings(
+            CameraConnectionSettings(), CameraRecipeSettings(trigger=TriggerSettings(TriggerMode.CONTINUOUS))
+        )
+        self.controller.start_preview()
+        self.assertFalse(self.controller.sensor_relay_running)
+        self.assertEqual(self.io.connect_count, 0)
+
+    def test_single_capture_releases_the_relay_with_its_frame(self):
+        self._setup(EXTERNAL_ONE_FRAME)
+        self.controller.capture_frame()
+        self.assertTrue(self.controller.sensor_relay_running)
+        self.camera.complete_capture()
+        self.assertTrue(_wait_until(lambda: not self.controller.sensor_relay_running))
+
+    def test_software_trigger_snaps_on_each_sensor_edge(self):
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE))
+        self.meter_wheel.set_compare(0)
+        self.meter_wheel.set_encoder(40)
+        self.screen.preview_button.click()
+        self.assertTrue(self.controller.software_trigger_monitor_running)
+        self.assertEqual(self.controller.sensor_relay_stats.mode, MODE_SNAP)
+        self.assertIsNone(self.controller._software_monitor, "the meter-wheel compare monitor is not used")
+        self.assertEqual(self.screen.status_values["trigger_monitor"].text(), "監控中")
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.polls > 1))
+
+        self._edge()
+        self.assertTrue(_wait_until(lambda: self.camera.status().state == CameraState.CAPTURING))
+        self.assertEqual(self.meter_wheel.read_compare(), 41, "compare re-armed ahead of the encoder")
+        self.assertTrue(self.controller._sensor_capture_in_flight)
+        self.assertEqual(self.io.writes, [], "Software Trigger never drives the grabber DO")
+
+        self._edge(False)
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.di_active is False))
+        time.sleep(0.06)  # past min_interval_ms
+        self._edge()
+        self.assertTrue(_wait_until(lambda: any("上一張尚未完成" in message for message in self.messages)))
+        self.assertTrue(any("米輪已走約" in message and "不會補拍" in message for message in self.messages))
+
+        self.camera.complete_capture()
+        self.assertTrue(_wait_until(lambda: not self.controller._sensor_capture_in_flight))
+        self.screen.stop_button.click()
+        self.assertFalse(self.controller.software_trigger_monitor_running)
+        self.assertFalse(self.controller.sensor_relay_running)
+        self.assertEqual(self.screen.status_values["trigger_monitor"].text(), "未啟動")
+
+    def _second_edge_during_capture(self, travel: int) -> list[str]:
+        self.screen.preview_button.click()
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.polls > 1))
+        self._edge()
+        self.assertTrue(_wait_until(lambda: self.controller._sensor_capture_in_flight))
+        self.meter_wheel.set_encoder(self.meter_wheel.read_encoder() + travel)
+        self._edge(False)
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.di_active is False))
+        time.sleep(0.06)
+        self._edge()
+        self.assertTrue(_wait_until(lambda: any("E-610" in text for text, _kind in self.notices)))
+        return [text for text, _kind in self.notices if "E-610" in text]
+
+    def test_a_frame_longer_than_the_product_pitch_names_the_length_to_use(self):
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE), length=100)
+        notices = self._second_edge_during_capture(travel=40)
+        self.assertEqual(len(notices), 1, "one conclusion per capture, not one per skipped edge")
+        self.assertIn("[E-6106]", notices[0])
+        self.assertIn("只走 40 格", notices[0])
+        self.assertIn("Length 改為 40 行以內", notices[0])
+        self.camera.complete_capture()
+
+    def test_enough_travel_without_a_frame_points_at_the_line_trigger(self):
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE), length=10)
+        notices = self._second_edge_during_capture(travel=50)
+        self.assertIn("[E-6107]", notices[0])
+        self.assertIn("Encoder 50", notices[0], "values the operator can type back")
+        self.assertIn("Compare", notices[0])
+        self.camera.complete_capture()
+
+    def _start_sensor_capture(self, length: int = 10) -> None:
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE), length=length)
+        self.meter_wheel.set_encoder(1000)
+        self.screen.preview_button.click()
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.polls > 1))
+        self._edge()
+        self.assertTrue(_wait_until(lambda: self.controller._sensor_capture_in_flight))
+        self.assertIsNotNone(self.controller._sensor_watch)
+
+    def test_a_stalled_compare_is_rearmed_during_the_capture(self):
+        self._start_sensor_capture()
+        # Auto-increment stopped: the compare stays at 1001 while the encoder keeps counting up.
+        self.meter_wheel.set_encoder(1030)
+        self.controller.poll_meter_wheel()
+        self.assertGreater(self.meter_wheel.read_compare(), 1030, "the compare is put back ahead of the encoder")
+        self.assertTrue(any("已自動重設 Compare" in text for text, _kind in self.notices))
+        self.camera.complete_capture()
+        self.assertTrue(_wait_until(lambda: self.controller._sensor_watch is None))
+
+    def test_reverse_counting_is_switched_during_the_capture(self):
+        self._start_sensor_capture()
+        self.assertFalse(self.controller.machine_settings.meter_wheel.reverse_direction)
+        self.meter_wheel.set_encoder(700)
+        self.controller.poll_meter_wheel()
+        self.assertTrue(self.controller.machine_settings.meter_wheel.reverse_direction, "reverse direction switched and saved")
+        self.assertEqual(self.meter_wheel.read_compare(), 701, "compare re-armed ahead of the encoder")
+        self.assertTrue(any("[E-6108]" in text and "已自動" in text for text, _kind in self.notices))
+        self.camera.complete_capture()
+
+    def test_travel_past_length_is_reported_at_once_with_values(self):
+        self._start_sensor_capture(length=10)
+        self.meter_wheel.set_compare(1025)
+        self.meter_wheel.set_encoder(1022)
+        self.controller.poll_meter_wheel()
+        notices = [text for text, _kind in self.notices if "[E-6107]" in text]
+        self.assertEqual(len(notices), 1, "reported while the frame is still open, not at the next Sensor")
+        self.assertIn("Encoder 1022", notices[0])
+        self.controller.poll_meter_wheel()
+        self.assertEqual(len([text for text, _kind in self.notices if "[E-6107]" in text]), 1, "once per capture")
+        self.camera.complete_capture()
+
+    def test_zero_cmp_out_width_refuses_the_snap(self):
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE))
+        self.controller.set_cmp_out_width(0)
+        self.screen.preview_button.click()
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.polls > 1))
+        self._edge()
+        self.assertTrue(_wait_until(lambda: any("CMP Out Width 為 0" in text for text, _kind in self.notices)))
+        self.assertEqual(self.camera.status().state, CameraState.IDLE)
+        self.assertFalse(self.controller._sensor_capture_in_flight)
+
+    def test_cmp_out_polarity_is_saved_and_written(self):
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE))
+        self.screen.cmp_polarity_input.setValue(10)
+        self.screen.cmp_polarity_set_button.click()
+        self.assertEqual(self.controller.machine_settings.meter_wheel.cmp_out_polarity, 10)
+        self.assertEqual(self.store.load().meter_wheel.cmp_out_polarity, 10)
+        self.assertEqual(self.meter_wheel.settings.cmp_out_polarity, 10, "rewritten while connected")
+        self.assertEqual(self.controller.legacy_current_values()["meter_wheel.cmp_out_polarity"], "10")
+
+    def test_line_trigger_hint_follows_where_the_compare_sits(self):
+        hint = CcdController._line_trigger_hint
+        self.assertIn("米輪還沒走到", hint(1000, 9000, 9))
+        self.assertIn("自動遞增沒有動作", hint(9000, 1000, 9))
+        self.assertIn("CMP_OUT→擷取卡的接線", hint(9000, 9005, 9))
+
+    def test_sensor_diagnosis_prefers_actual_height_and_current_frame_events(self):
+        self._start_sensor_capture(length=8000)
+        self.camera.apply_readbacks = lambda: {"EL": "1", "EF": "0", "CROP": "9000", "H": "9000"}
+        hint = self.controller._sensor_line_trigger_hint(80000, 80009, 9, {})
+        self.assertIn("Length 8000 不符", hint)
+        self.assertIn("H=9000", hint)
+        self.camera.apply_readbacks = lambda: {"EL": "1", "EF": "0", "CROP": "8000", "H": "8000"}
+        from devices.ccd_models import ACQUISITION_EVENT_LINE_TRIGGER_TOO_FAST
+        hint = self.controller._sensor_line_trigger_hint(80000, 80009, 9, {ACQUISITION_EVENT_LINE_TRIGGER_TOO_FAST: 1})
+        self.assertIn("本張擷取卡回報行觸發太快", hint)
+        hint = self.controller._sensor_line_trigger_hint(80000, 80009, 9, {})
+        self.assertIn("無法確認 CMP_OUT", hint)
+        self.camera.complete_capture()
+
+    def test_e6107_counts_only_errors_since_this_sensor_capture(self):
+        from devices.ccd_models import ACQUISITION_EVENT_LINE_TRIGGER_TOO_FAST
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE), length=10)
+        self.camera.emit_acquisition_event(ACQUISITION_EVENT_LINE_TRIGGER_TOO_FAST)
+        self.screen.preview_button.click()
+        self._edge()
+        self.assertTrue(_wait_until(lambda: self.controller._sensor_capture_in_flight))
+        self.meter_wheel.set_encoder(50)
+        self.meter_wheel.set_compare(51)
+        self.controller.poll_meter_wheel()
+        notice = next(text for text, _ in self.notices if "[E-6107]" in text)
+        self.assertNotIn("本張擷取卡回報行觸發太快", notice)
+        self.camera.complete_capture()
+
+    def test_reverse_counting_is_reported_as_e6108(self):
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE), length=10)
+        self.meter_wheel.set_encoder(1000)
+        notices = self._second_edge_during_capture(travel=-300)
+        self.assertIn("[E-6108]", notices[0])
+        self.assertIn("反向計數", notices[0])
+        self.camera.complete_capture()
+
+    def test_imported_trigger_sequence_resets_the_encoder_and_offsets_the_compare(self):
+        relay = replace(ENABLED, snap_encoder_reset=True, snap_encoder_value=0, snap_compare_offset=120)
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE), relay=relay)
+        self.meter_wheel.set_encoder(5000)
+        self.meter_wheel.set_compare(5001)
+        self.screen.preview_button.click()
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.polls > 1))
+        self._edge()
+        self.assertTrue(_wait_until(lambda: self.camera.status().state == CameraState.CAPTURING))
+        self.assertEqual(self.meter_wheel.read_encoder(), 0, "the encoder is reset like the original program")
+        self.assertEqual(self.meter_wheel.read_compare(), 120, "the first line starts 120 counts after the Sensor")
+        self.camera.complete_capture()
+
+    def test_meter_wheel_set_values_fill_the_trigger_sequence(self):
+        self.screen.encoder_input.setValue(100)
+        self.screen.compare_input.setValue(250)
+        self.screen.sensor_snap_from_wheel_button.click()
+        settings = self.screen.sensor_relay_settings()
+        self.assertEqual((settings.snap_encoder_reset, settings.snap_encoder_value, settings.snap_compare_offset), (True, 100, 150))
+        self.assertEqual(self.store.load().sensor_relay.snap_compare_offset, 0, "filling the form saves nothing")
+
+    def test_offset_without_reset_is_relative_to_the_encoder_at_the_trigger(self):
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE), relay=replace(ENABLED, snap_compare_offset=30))
+        self.meter_wheel.set_encoder(400)
+        self.screen.preview_button.click()
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.polls > 1))
+        self._edge()
+        self.assertTrue(_wait_until(lambda: self.camera.status().state == CameraState.CAPTURING))
+        self.assertEqual((self.meter_wheel.read_encoder(), self.meter_wheel.read_compare()), (400, 430))
+        self.camera.complete_capture()
+
+    def test_sensor_does_not_snap_when_meter_disconnects_before_edge(self):
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE))
+        self.screen.preview_button.click()
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.polls > 1))
+        self.meter_wheel.disconnect()
+        self._edge()
+        self.assertTrue(_wait_until(lambda: any("米輪未連線" in text for text, _kind in self.notices)))
+        self.assertEqual(self.camera.status().state, CameraState.IDLE)
+        self.assertFalse(self.controller._sensor_capture_in_flight)
+
+    def test_sensor_rearms_compare_left_far_ahead_by_previous_run(self):
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE))
+        self.meter_wheel.set_encoder(40)
+        self.meter_wheel.set_compare(4000)
+        self.screen.preview_button.click()
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.polls > 1))
+        self._edge()
+        self.assertTrue(_wait_until(lambda: self.camera.status().state == CameraState.CAPTURING))
+        self.assertEqual(self.meter_wheel.read_compare(), 41)
+
+    def test_sensor_does_not_snap_when_compare_write_fails(self):
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE))
+        self.meter_wheel.set_encoder(40)
+        self.meter_wheel.set_compare(0)
+        self.screen.preview_button.click()
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.polls > 1))
+        with unittest.mock.patch.object(self.meter_wheel, "set_compare", side_effect=DeviceError("寫入失敗")):
+            self._edge()
+            self.assertTrue(_wait_until(lambda: any("未開始取像" in text for text, _kind in self.notices)))
+        self.assertEqual(self.camera.status().state, CameraState.IDLE)
+        self.assertFalse(self.controller._sensor_capture_in_flight)
+
+    def test_sensor_recovers_if_camera_ends_without_a_frame_callback(self):
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE))
+        self.screen.preview_button.click()
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.polls > 1))
+        self._edge()
+        self.assertTrue(_wait_until(lambda: self.controller._sensor_capture_in_flight))
+        self.camera._state = CameraState.IDLE
+        self.controller._sensor_capture_started_at -= 2.0
+        self._edge(False)
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.di_active is False))
+        time.sleep(0.06)
+        self._edge()
+        self.assertTrue(_wait_until(lambda: any("已解除 Sensor 忙碌狀態" in text for text, _kind in self.notices)))
+        self.assertEqual(self.camera.status().state, CameraState.CAPTURING)
+        self.assertTrue(self.controller._sensor_capture_in_flight)
+
+    def test_relay_start_failure_is_reported_and_software_trigger_does_not_start(self):
+        self.controller.devices = CcdDevices(self.camera, self.meter_wheel, SimulatedDigitalIo(False, "找不到卡"))
+        self._setup(TriggerSettings(TriggerMode.SOFTWARE))
+        self.assertFalse(self.controller.start_software_trigger_monitor())
+        self.assertIn("Sensor 中繼無法啟動", self.notices[-1][0])
+        self.assertIn("找不到卡", self.notices[-1][0])
+        self.assertFalse(self.controller.software_trigger_monitor_running)
+
+    def test_relay_failure_while_running_stops_it(self):
+        self._setup(EXTERNAL_ONE_FRAME)
+        self.controller.start_preview()
+        self.io.fail_reads = True
+        self.assertTrue(_wait_until(lambda: any("Sensor 中繼失敗" in text for text, _kind in self.notices)))
+        self.assertFalse(self.controller.sensor_relay_running)
+
+    def test_manual_io_tests_use_the_saved_channels_and_are_refused_while_running(self):
+        self.controller.apply_sensor_relay_settings(ENABLED)
+        self._edge()
+        self.assertTrue(self.controller.read_sensor_input())
+        self.assertIn("DI port 1 bit 3 目前有效", self.notices[-1][0])
+        self.assertTrue(self.controller.pulse_sensor_output())
+        self.assertEqual(self.io.writes, [(2, 5, True), (2, 5, False)])
+        self.assertFalse(self.io.is_connected)
+
+        self._setup(EXTERNAL_ONE_FRAME)
+        self.controller.start_preview()
+        self.assertIsNone(self.controller.read_sensor_input())
+        self.assertFalse(self.controller.pulse_sensor_output())
+        self.assertIn("中繼執行中", self.notices[-1][0])
+        self.assertFalse(self.controller.apply_sensor_relay_settings(SensorRelaySettings()))
+        self.assertTrue(self.store.load().sensor_relay.enabled)
+
+    def test_diagnosis_reports_the_relay_stage_that_stopped_the_trigger(self):
+        self._setup(EXTERNAL_ONE_FRAME)
+        self.controller.start_preview()
+        self.meter_wheel.set_encoder(30)
+        self.controller.poll_meter_wheel()
+        self.assertEqual(self.controller.trigger_diagnosis.code, "no_relay_input")
+        self.assertTrue(any("Sensor 中繼（PCIe-1730）" in fact for fact in self.controller.trigger_diagnosis.facts))
+
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.polls > 1))
+        self._edge()
+        self.assertTrue(_wait_until(lambda: self.controller.sensor_relay_stats.pulses == 1))
+        self.meter_wheel.set_encoder(35)
+        self.controller.poll_meter_wheel()
+        self.assertEqual(self.controller.trigger_diagnosis.code, "relay_not_received")
+
+    def test_browsing_for_the_daqnavi_dll_saves_it_and_refreshes_availability(self):
+        dll = self.root / "DAQNavi" / "Automation.BDaq4.dll"
+        dll.parent.mkdir()
+        dll.write_bytes(b"")
+        io = AdvantechDigitalIo(lambda: self.store.load().sensor_relay.assembly_path, environ={})
+        self.controller.devices = CcdDevices(self.camera, self.meter_wheel, io)
+        self.assertFalse(self.controller.set_sensor_dll_path(str(self.root / "missing.dll")))
+        self.assertEqual(self.notices[-1][1], "warning")
+        self.assertFalse(self.screen.sensor_relay_availability_label.isHidden())
+
+        with unittest.mock.patch(
+            "gui.screens.ccd_screen.QFileDialog.getOpenFileName", return_value=(str(dll), "")
+        ):
+            self.screen.sensor_assembly_button.click()
+        self.assertEqual(self.store.load().sensor_relay.assembly_path, str(dll))
+        self.assertEqual(self.screen.sensor_assembly_edit.text(), str(dll))
+        self.assertEqual(self.notices[-1][1], "success")
+        self.assertTrue(self.screen.sensor_relay_availability_label.isHidden())
+
+        with unittest.mock.patch("gui.screens.ccd_screen.QFileDialog.getOpenFileName", return_value=("", "")):
+            self.screen.sensor_assembly_button.click()
+        self.assertEqual(self.store.load().sensor_relay.assembly_path, str(dll), "cancel keeps the saved DLL")
+        self.screen.set_mode("eng")
+        self.assertFalse(self.screen.sensor_assembly_button.isEnabled())
+
+    def test_screen_panel_is_admin_only_and_round_trips_settings(self):
+        self.screen.set_sensor_relay_settings(ENABLED.normalized())
+        self.assertEqual(self.screen.sensor_relay_settings(), ENABLED.normalized())
+        self.screen.sensor_do_bit_input.setValue(7)
+        self.screen.sensor_apply_button.click()
+        self.assertEqual(self.store.load().sensor_relay.do_bit, 7)
+        self.screen.set_mode("eng")
+        for widget in (
+            self.screen.sensor_relay_enabled_check,
+            self.screen.sensor_apply_button,
+            self.screen.sensor_read_button,
+            self.screen.sensor_pulse_button,
+        ):
+            self.assertFalse(widget.isEnabled())
+        self.screen.set_mode("admin")
+        self.assertTrue(self.screen.sensor_pulse_button.isEnabled())
+        self.screen.set_sensor_relay_availability(DeviceAvailability(False, "找不到 DAQNavi"))
+        self.assertFalse(self.screen.sensor_relay_availability_label.isHidden())
+        self.assertIn("I/O 卡不可用：找不到 DAQNavi", self.screen.sensor_relay_availability_label.text())
+        self.screen.set_sensor_relay_availability(DeviceAvailability(True))
+        self.assertTrue(self.screen.sensor_relay_availability_label.isHidden())
+
+
+if __name__ == "__main__":
+    unittest.main()

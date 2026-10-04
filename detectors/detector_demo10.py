@@ -1,0 +1,117 @@
+from __future__ import annotations
+
+from detectors.demo_defaults import demo_defaults
+
+import time
+
+import numpy as np
+
+from core.parameter_schema import (
+    PARAMETER_GROUP_INNER,
+    PARAMETER_GROUP_OUTER,
+    specs_from_defaults,
+)
+from detectors.base_detector import BaseDetector
+from detectors.detector_demo10_domain import (
+    CandidateAnalyzer,
+    Demo10DetectorConfig,
+    Demo10DetectorMaskPreprocessor,
+    Demo10DetectorResultAssembler,
+    PairGeometry,
+)
+
+
+class Demo10Detector(BaseDetector):
+    detector_id = 'demo10'
+    detector_name = 'demo10'
+    display_name = 'demo10'
+    default_params = demo_defaults("demo10")
+    PARAM_SPEC = specs_from_defaults(default_params, {
+        "max_value": {"minimum": 1, "maximum": 255, "parameter_group": PARAMETER_GROUP_INNER},
+        "outer_threshold": {"minimum": 0, "maximum": 255, "parameter_group": PARAMETER_GROUP_INNER},
+        "outer_invert": {"parameter_group": PARAMETER_GROUP_INNER},
+        "outer_contour_mode": {"choices": ("external", "list", "tree", "ccomp"), "parameter_group": PARAMETER_GROUP_INNER},
+        "outer_target_width": {"minimum": 1, "parameter_group": PARAMETER_GROUP_OUTER},
+        "outer_width_tolerance": {"minimum": 0, "parameter_group": PARAMETER_GROUP_OUTER},
+        "outer_target_height": {"minimum": 1, "parameter_group": PARAMETER_GROUP_OUTER},
+        "outer_height_tolerance": {"minimum": 0, "parameter_group": PARAMETER_GROUP_OUTER},
+        "inner_adaptive_block_size": {"minimum": 3, "odd": True, "parameter_group": PARAMETER_GROUP_INNER},
+        "inner_adaptive_c": {"parameter_group": PARAMETER_GROUP_INNER},
+        "inner_invert": {"parameter_group": PARAMETER_GROUP_INNER},
+        "inner_contour_mode": {"choices": ("external", "list", "tree", "ccomp"), "parameter_group": PARAMETER_GROUP_INNER},
+        "inner_target_width": {"minimum": 1, "parameter_group": PARAMETER_GROUP_OUTER},
+        "inner_width_tolerance": {"minimum": 0, "parameter_group": PARAMETER_GROUP_OUTER},
+        "inner_target_height": {"minimum": 1, "parameter_group": PARAMETER_GROUP_OUTER},
+        "inner_height_tolerance": {"minimum": 0, "parameter_group": PARAMETER_GROUP_OUTER},
+        "max_edge_gap": {"minimum": 0, "parameter_group": PARAMETER_GROUP_OUTER},
+        "roi_inset_px": {"minimum": 0, "parameter_group": PARAMETER_GROUP_OUTER},
+    })
+
+    def preprocess(self, image):
+        return image if self.gpu_active else self.shared_gray(image)
+
+    def detect(self, image) -> list[dict]:
+        config = Demo10DetectorConfig.from_params(self.params)
+        roi, offset_x, offset_y = self._roi_image(image)
+        analyzer = CandidateAnalyzer()
+        summaries_started = time.perf_counter()
+        summaries = self._device_summaries(roi, offset_x, offset_y, config)
+        if summaries is not None:
+            self._detection_stage_durations["device_contour_summaries"] = (
+                time.perf_counter() - summaries_started
+            )
+            outer_candidates = analyzer.from_summaries(summaries[0], config.outer_rule)
+            inner_candidates = analyzer.from_summaries(summaries[1], config.inner_rule)
+        else:
+            with self.measure_detection_stage("preprocess"):
+                masks = self._make_masks(roi, offset_x, offset_y)
+            with self.measure_detection_stage("find_contours"):
+                outer_candidates = analyzer.analyze(
+                    masks["outer_mask"], config.outer_contour_mode, config.outer_rule
+                )
+                inner_candidates = analyzer.analyze(
+                    masks["inner_mask"], config.inner_contour_mode, config.inner_rule
+                )
+        geometry_started = time.perf_counter()
+        match = PairGeometry().find_valid_pair(
+            outer_candidates.accepted, inner_candidates.accepted, config.max_edge_gap
+        )
+        self._detection_stage_durations["geometry_analysis"] = time.perf_counter() - geometry_started
+        if match is not None:
+            return []
+        return Demo10DetectorResultAssembler().assemble(
+            config, outer_candidates, inner_candidates, image.shape[:2], offset_x, offset_y
+        )
+
+    def _roi_image(self, image):
+        inset = Demo10DetectorConfig.from_params(self.params).roi_inset_px
+        if inset <= 0:
+            return image, 0, 0
+
+        height, width = image.shape[:2]
+        if width <= inset * 2 or height <= inset * 2:
+            return image, 0, 0
+
+        return image[inset : height - inset, inset : width - inset], inset, inset
+
+    def _mask_plan(self, image, config: Demo10DetectorConfig):
+        preprocessor = Demo10DetectorMaskPreprocessor(config)
+        return self.cached_preprocess_plan(image, preprocessor.signature, preprocessor.plan)
+
+    def _make_masks(self, image, offset_x: int = 0, offset_y: int = 0) -> dict[str, np.ndarray]:
+        plan = self._mask_plan(image, Demo10DetectorConfig.from_params(self.params))
+        return self.execute_preprocess_dag(image, plan, (offset_x, offset_y))
+
+    def _device_summaries(self, image, offset_x: int, offset_y: int, config: Demo10DetectorConfig):
+        """Outer/inner contour records traced on the device, or ``None`` for the mask path."""
+        if not self.gpu_active:
+            return None
+        return self.execute_dag_contour_summaries(
+            image,
+            self._mask_plan(image, config),
+            (
+                ("outer_mask", CandidateAnalyzer.device_contour_mode(config.outer_contour_mode)),
+                ("inner_mask", CandidateAnalyzer.device_contour_mode(config.inner_contour_mode)),
+            ),
+            (offset_x, offset_y),
+        )

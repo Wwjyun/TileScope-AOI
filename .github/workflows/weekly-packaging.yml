@@ -1,0 +1,55 @@
+name: Weekly Windows packaging
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: weekly-packaging-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  package-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock.txt
+      - name: Create locked build environment
+        shell: pwsh
+        run: |
+          python -m venv --clear env
+          .\env\Scripts\python.exe -m pip install -r requirements.lock.txt
+      - name: Build PyInstaller package
+        shell: pwsh
+        run: .\packaging\scripts\build_exe.ps1
+      - name: Packaged smoke
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $process = Start-Process `
+            -FilePath '.\dist\VisionFlow AOI\VisionFlow AOI.exe' `
+            -ArgumentList '--smoke-test' `
+            -Wait `
+            -PassThru `
+            -WindowStyle Hidden `
+            -ErrorAction Stop
+          if ($process.ExitCode -ne 0) {
+            throw "Packaged smoke failed with exit code $($process.ExitCode)"
+          }
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: weekly-visionflow-aoi-${{ github.sha }}
+          path: dist/VisionFlow AOI/
+          if-no-files-found: error

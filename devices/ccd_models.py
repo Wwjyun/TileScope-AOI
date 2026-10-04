@@ -1,0 +1,517 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field, replace
+from enum import Enum
+
+# ============================================================
+# CCD line-scan camera and LSI-8181 meter wheel value objects.
+# Behaviour reference: third-party C# acquisition program, PROJECT_HANDOFF.md.
+# Source rights remain under review; see docs/source-provenance.md.
+# ============================================================
+
+EXPOSURE_RANGE = (0.0, 100_000.0)
+GAIN_RANGE = (0.0, 1_000.0)
+LENGTH_LINES_RANGE = (1, 1_000_000)
+LINE_RATE_HZ_RANGE = (1, 1_000_000)
+CARD_ID_RANGE = (0, 15)
+COUNTER_RANGE = (0, 2_147_483_647)
+UINT16_RANGE = (0, 65_535)
+INT16_RANGE = (-32_768, 32_767)
+SAVE_WORKERS_RANGE = (1, 8)
+EXTENSION_CHANNEL_COUNT = 8
+
+
+class DeviceError(RuntimeError):
+    """Operator-facing device failure; the message is Traditional Chinese."""
+
+
+class TriggerMode(str, Enum):
+    CONTINUOUS = "continuous"
+    EXTERNAL = "external_trigger"
+    SOFTWARE = "software_trigger"
+
+
+TRIGGER_MODE_LABELS = {
+    TriggerMode.CONTINUOUS: "連續取像（Free Run）",
+    TriggerMode.EXTERNAL: "外部觸發",
+    TriggerMode.SOFTWARE: "軟體觸發",
+}
+
+
+class ImageSaveFormat(str, Enum):
+    BMP = "bmp"
+    PNG = "png"
+    TIF = "tif"
+    TIF_UNCOMPRESSED = "tif_uncompressed"
+
+    @property
+    def extension(self) -> str:
+        return ".tif" if self in (ImageSaveFormat.TIF, ImageSaveFormat.TIF_UNCOMPRESSED) else f".{self.value}"
+
+
+IMAGE_SAVE_FORMAT_LABELS = {
+    ImageSaveFormat.BMP: "BMP（檢測交接）",
+    ImageSaveFormat.PNG: "PNG",
+    ImageSaveFormat.TIF: "TIF",
+    ImageSaveFormat.TIF_UNCOMPRESSED: "TIF（不壓縮）",
+}
+
+
+class MultipleRate(str, Enum):
+    # Vendor order: X4, X2, X1.
+    X4 = "x4"
+    X2 = "x2"
+    X1 = "x1"
+
+
+MULTIPLE_RATE_LABELS = {MultipleRate.X4: "X4", MultipleRate.X2: "X2", MultipleRate.X1: "X1"}
+
+
+class CameraState(str, Enum):
+    OFFLINE = "offline"
+    IDLE = "idle"
+    PREVIEWING = "previewing"
+    CAPTURING = "capturing"
+
+
+CAMERA_STATE_LABELS = {
+    CameraState.OFFLINE: "離線",
+    CameraState.IDLE: "待機",
+    CameraState.PREVIEWING: "預覽中",
+    CameraState.CAPTURING: "擷取中",
+}
+
+
+def _clamp(value, bounds):
+    low, high = bounds
+    return max(low, min(high, value))
+
+
+def enum_value(enum_type, value, default):
+    try:
+        return enum_type(value)
+    except ValueError:
+        return default
+
+
+@dataclass(frozen=True)
+class DeviceAvailability:
+    available: bool
+    reason: str = ""
+
+
+@dataclass(frozen=True)
+class CameraConnectionSettings:
+    """Machine-level Sapera location; never stored in a Recipe."""
+
+    server_name: str = ""
+    resource_index: int = 0
+    config_file_path: str = ""
+    device_feature_server_name: str = ""
+    device_feature_resource_index: int = -1
+
+    def normalized(self) -> "CameraConnectionSettings":
+        return replace(
+            self,
+            server_name=str(self.server_name).strip(),
+            resource_index=max(0, int(self.resource_index)),
+            config_file_path=str(self.config_file_path).strip(),
+            device_feature_server_name=str(self.device_feature_server_name).strip(),
+            device_feature_resource_index=max(-1, int(self.device_feature_resource_index)),
+        )
+
+
+@dataclass(frozen=True)
+class AcquisitionSettings:
+    """Product-level camera parameters written on the next connect."""
+
+    exposure_time: float = 1200.0
+    gain: float = 1.0
+    length_lines: int = 720
+    internal_line_rate_hz: int = 30
+
+    def normalized(self) -> "AcquisitionSettings":
+        return replace(
+            self,
+            exposure_time=float(_clamp(float(self.exposure_time), EXPOSURE_RANGE)),
+            gain=float(_clamp(float(self.gain), GAIN_RANGE)),
+            length_lines=int(_clamp(int(self.length_lines), LENGTH_LINES_RANGE)),
+            internal_line_rate_hz=int(_clamp(int(self.internal_line_rate_hz), LINE_RATE_HZ_RANGE)),
+        )
+
+
+@dataclass(frozen=True)
+class TriggerOptionAvailability:
+    external_frame_one_frame: bool
+    compare_follows_encoder: bool
+    set_encoder_on_trigger: bool
+    auto_save_external_one_frame: bool
+    auto_save_software_trigger: bool
+
+
+@dataclass(frozen=True)
+class TriggerSettings:
+    mode: TriggerMode = TriggerMode.CONTINUOUS
+    external_frame_one_frame: bool = False
+    compare_follows_encoder: bool = False
+    set_encoder_on_trigger: bool = False
+
+    def availability(self) -> TriggerOptionAvailability:
+        mode = TriggerMode(self.mode)
+        # Software Trigger starts a frame with Snap(); EXT_FRAME_TRIGGER_ENABLE must stay 0.
+        one_frame = mode != TriggerMode.SOFTWARE
+        compare_follow = mode == TriggerMode.EXTERNAL and one_frame and bool(self.external_frame_one_frame)
+        set_encoder = compare_follow and bool(self.compare_follows_encoder)
+        return TriggerOptionAvailability(
+            external_frame_one_frame=one_frame,
+            compare_follows_encoder=compare_follow,
+            set_encoder_on_trigger=set_encoder,
+            auto_save_external_one_frame=mode == TriggerMode.EXTERNAL,
+            auto_save_software_trigger=mode == TriggerMode.SOFTWARE,
+        )
+
+    def normalized(self) -> "TriggerSettings":
+        mode = TriggerMode(self.mode)
+        one_frame = bool(self.external_frame_one_frame) and mode != TriggerMode.SOFTWARE
+        compare_follow = bool(self.compare_follows_encoder) and mode == TriggerMode.EXTERNAL and one_frame
+        set_encoder = bool(self.set_encoder_on_trigger) and compare_follow
+        return TriggerSettings(mode, one_frame, compare_follow, set_encoder)
+
+
+# Backend-neutral grabber events counted by `LineScanCamera.acquisition_event_counts()`.
+ACQUISITION_EVENT_TRIGGER = "trigger"  # external frame trigger accepted
+ACQUISITION_EVENT_TRIGGER_IGNORED = "trigger_ignored"  # frame trigger arrived while the grabber was busy
+ACQUISITION_EVENT_FRAME_TRIGGER_TOO_SLOW = "frame_trigger_too_slow"
+ACQUISITION_EVENT_LINE_TRIGGER_TOO_SLOW = "line_trigger_too_slow"
+ACQUISITION_EVENT_LINE_TRIGGER_TOO_FAST = "line_trigger_too_fast"
+
+
+@dataclass(frozen=True)
+class FrameTriggerInput:
+    """External frame-trigger input as the grabber holds it after connect; the CCF decides it.
+
+    `detection`/`level` are backend value names (Sapera `SapAcquisition.Val`, e.g. `RISING_EDGE`,
+    `LEVEL_24VOLTS`) when the raw number matched one, else empty. Raw numbers stay for the report.
+    """
+
+    enabled: int | None = None
+    source: int | None = None
+    detection_raw: int | None = None
+    detection: str = ""
+    level_raw: int | None = None
+    level: str = ""
+
+
+@dataclass(frozen=True)
+class CameraRecipeSettings:
+    """Product-level camera settings persisted in a Recipe's optional `camera` section."""
+
+    acquisition: AcquisitionSettings = field(default_factory=AcquisitionSettings)
+    trigger: TriggerSettings = field(default_factory=TriggerSettings)
+    auto_save_external_one_frame: bool = False
+    auto_save_software_trigger: bool = False
+
+    def normalized(self) -> "CameraRecipeSettings":
+        return CameraRecipeSettings(
+            acquisition=self.acquisition.normalized(),
+            trigger=self.trigger.normalized(),
+            auto_save_external_one_frame=bool(self.auto_save_external_one_frame),
+            auto_save_software_trigger=bool(self.auto_save_software_trigger),
+        )
+
+
+@dataclass(frozen=True)
+class SaveSettings:
+    """Machine-level snapshot saving; auto-save rules are product-level (`CameraRecipeSettings`)."""
+
+    image_format: ImageSaveFormat = ImageSaveFormat.BMP
+    folder: str = ""
+    max_concurrent_saves: int = 2
+
+    def normalized(self) -> "SaveSettings":
+        return replace(
+            self,
+            image_format=ImageSaveFormat(self.image_format),
+            folder=str(self.folder).strip(),
+            max_concurrent_saves=int(_clamp(int(self.max_concurrent_saves), SAVE_WORKERS_RANGE)),
+        )
+
+
+@dataclass(frozen=True)
+class ExtensionCompareChannel:
+    """Position-offset compare output CMP0_OUT … CMP7_OUT."""
+
+    masked: bool = False
+    offset: int = 0
+    pulse_width: int = 0
+    output_state: bool = False
+
+    def normalized(self) -> "ExtensionCompareChannel":
+        masked = bool(self.masked)
+        return ExtensionCompareChannel(
+            masked=masked,
+            offset=int(_clamp(int(self.offset), INT16_RANGE)),
+            pulse_width=int(_clamp(int(self.pulse_width), UINT16_RANGE)),
+            # A masked channel's manual output state is cleared, as in the vendor tool.
+            output_state=bool(self.output_state) and not masked,
+        )
+
+
+def _default_extension_channels() -> tuple[ExtensionCompareChannel, ...]:
+    return tuple(ExtensionCompareChannel() for _ in range(EXTENSION_CHANNEL_COUNT))
+
+
+@dataclass(frozen=True)
+class MeterWheelSettings:
+    card_id: int = 0
+    compare_increment: int = 0
+    multiple_rate: MultipleRate = MultipleRate.X4
+    reverse_direction: bool = False
+    cmp_out_width: int = 0
+    # LSI8181_compare_CMP_OUT_set polarity, as the vendor program's CMP output polarity shows it.
+    # 0 was fixed before 2026-09-30; the camera machine needs its original program's value.
+    cmp_out_polarity: int = 0
+    encoder_value: int = 0
+    compare_value: int = 0
+    extension_channels: tuple[ExtensionCompareChannel, ...] = field(default_factory=_default_extension_channels)
+    # Machine-level: where this machine keeps `LSI8181_64.dll`. Empty means "use the loader's search
+    # order" (env var, then the application folder, then the Windows search path). The camera machine
+    # cannot set environment variables conveniently, so the CCD page can point at the vendor folder.
+    dll_path: str = ""
+
+    def normalized(self) -> "MeterWheelSettings":
+        channels = list(self.extension_channels)[:EXTENSION_CHANNEL_COUNT]
+        channels += [ExtensionCompareChannel()] * (EXTENSION_CHANNEL_COUNT - len(channels))
+        return MeterWheelSettings(
+            card_id=int(_clamp(int(self.card_id), CARD_ID_RANGE)),
+            compare_increment=int(_clamp(int(self.compare_increment), COUNTER_RANGE)),
+            multiple_rate=MultipleRate(self.multiple_rate),
+            reverse_direction=bool(self.reverse_direction),
+            cmp_out_width=int(_clamp(int(self.cmp_out_width), UINT16_RANGE)),
+            cmp_out_polarity=int(_clamp(int(self.cmp_out_polarity), CMP_OUT_POLARITY_RANGE)),
+            encoder_value=int(_clamp(int(self.encoder_value), COUNTER_RANGE)),
+            compare_value=int(_clamp(int(self.compare_value), COUNTER_RANGE)),
+            extension_channels=tuple(channel.normalized() for channel in channels),
+            dll_path=str(self.dll_path).strip(),
+        )
+
+
+CMP_OUT_POLARITY_RANGE = (0, 255)
+DIO_PORT_RANGE = (0, 15)
+DIO_BIT_RANGE = (0, 7)
+SENSOR_PULSE_MS_RANGE = (0.1, 100.0)
+SENSOR_MIN_INTERVAL_MS_RANGE = (0, 60_000)
+SENSOR_POLL_MS_RANGE = (0.0, 20.0)
+DEFAULT_DIO_DEVICE = "PCIe-1730,BID#0"
+
+
+SENSOR_SNAP_ENCODER_RANGE = (-(2**31), 2**31 - 1)
+SENSOR_SNAP_OFFSET_RANGE = (0, 10_000_000)
+
+
+@dataclass(frozen=True)
+class SensorRelaySettings:
+    """Machine-level Sensor relay through an Advantech DI/DO card (PCIe-1730).
+
+    On this machine the Sensor is wired into a DI of the I/O card and a DO of the card is wired to
+    the grabber's frame-trigger input, so nothing reaches the grabber unless a program forwards
+    the Sensor. When enabled, VisionFlow polls the DI and, depending on the trigger mode written to
+    the camera, pulses the DO (External Trigger One Frame) or starts a Software Trigger `Snap()`.
+    Off by default: the machine's original program also drives this card and must not run at the
+    same time.
+    """
+
+    enabled: bool = False
+    device: str = DEFAULT_DIO_DEVICE
+    di_port: int = 0
+    di_bit: int = 0
+    di_active_low: bool = False
+    do_port: int = 0
+    do_bit: int = 0
+    do_active_low: bool = False
+    pulse_ms: float = 1.0
+    min_interval_ms: int = 50
+    poll_interval_ms: float = 1.0
+    # Software Trigger by Sensor, matching the original program's per-trigger sequence:
+    # optionally set the encoder to snap_encoder_value first, then put the compare
+    # snap_compare_offset counts ahead of the encoder (0 = one line ahead, VisionFlow's default).
+    snap_encoder_reset: bool = False
+    snap_encoder_value: int = 0
+    snap_compare_offset: int = 0
+    # Automation.BDaq4.dll location; empty means the .NET assembly search (GAC) finds it.
+    assembly_path: str = ""
+
+    def normalized(self) -> "SensorRelaySettings":
+        return SensorRelaySettings(
+            enabled=bool(self.enabled),
+            device=str(self.device).strip() or DEFAULT_DIO_DEVICE,
+            di_port=int(_clamp(int(self.di_port), DIO_PORT_RANGE)),
+            di_bit=int(_clamp(int(self.di_bit), DIO_BIT_RANGE)),
+            di_active_low=bool(self.di_active_low),
+            do_port=int(_clamp(int(self.do_port), DIO_PORT_RANGE)),
+            do_bit=int(_clamp(int(self.do_bit), DIO_BIT_RANGE)),
+            do_active_low=bool(self.do_active_low),
+            pulse_ms=float(_clamp(float(self.pulse_ms), SENSOR_PULSE_MS_RANGE)),
+            min_interval_ms=int(_clamp(int(self.min_interval_ms), SENSOR_MIN_INTERVAL_MS_RANGE)),
+            poll_interval_ms=float(_clamp(float(self.poll_interval_ms), SENSOR_POLL_MS_RANGE)),
+            snap_encoder_reset=bool(self.snap_encoder_reset),
+            snap_encoder_value=int(_clamp(int(self.snap_encoder_value), SENSOR_SNAP_ENCODER_RANGE)),
+            snap_compare_offset=int(_clamp(int(self.snap_compare_offset), SENSOR_SNAP_OFFSET_RANGE)),
+            assembly_path=str(self.assembly_path).strip().strip("\"'").strip(),
+        )
+
+    @property
+    def di_label(self) -> str:
+        return f"DI port {self.di_port} bit {self.di_bit}"
+
+    @property
+    def do_label(self) -> str:
+        return f"DO port {self.do_port} bit {self.do_bit}"
+
+
+@dataclass(frozen=True)
+class SensorRelayStats:
+    """What the Sensor relay observed since it started (thread-safe snapshot)."""
+
+    running: bool = False
+    mode: str = ""  # forward | snap
+    polls: int = 0
+    edges: int = 0
+    ignored_edges: int = 0
+    pulses: int = 0
+    di_active: bool | None = None
+    max_poll_gap_ms: float = 0.0
+    error: str = ""
+
+
+SERIAL_BAUD_RATES = (1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200)
+SERIAL_PARITIES = ("none", "odd", "even", "mark", "space")
+SERIAL_STOP_BITS = ("one", "one_point_five", "two")
+LINE_ENDINGS = {"": "無", "\r": "CR (\\r)", "\n": "LF (\\n)", "\r\n": "CR+LF (\\r\\n)"}
+LIGHT_COMMAND_DELAY_MS_RANGE = (0, 5_000)
+LIGHT_REPLY_TIMEOUT_MS_RANGE = (0, 5_000)
+
+
+def _choice(value, choices, default):
+    return value if value in choices else default
+
+
+LIGHT_BRIGHTNESS_MAX_RANGE = (1, 65_535)
+LIGHT_CHANNEL_COUNT_MAX = 16
+
+
+@dataclass(frozen=True)
+class LightChannel:
+    channel: str = "1"
+    brightness: int = 0
+
+    def normalized(self, maximum: int) -> "LightChannel":
+        return LightChannel(str(self.channel).strip() or "1", int(_clamp(int(self.brightness), (0, maximum))))
+
+
+def _default_light_channels() -> tuple[LightChannel, ...]:
+    return (LightChannel("1", 0),)
+
+
+@dataclass(frozen=True)
+class LightSettings:
+    """Machine-level RS-232 light controller, driven with the commands the original program sends.
+
+    The brand is not assumed. Switching on sends `on_commands` in order, then one brightness
+    command per channel rendered from `brightness_template` (`{channel}`, `{value}`, `{checksum}`,
+    `{xor}`; see devices/serial_light.py). Switching off sends `off_commands`, or brightness 0 for
+    every channel when there are none. When enabled, camera-direct monitoring switches the light
+    on when it starts and off when it stops; otherwise it is switched by hand for testing, and it
+    is switched off when VisionFlow closes. Commands are text
+    with escapes (\\r, \\n, \\t, \\xNN, \\\\); `line_ending` is appended to every command. Off by default.
+    """
+
+    enabled: bool = False
+    port: str = "COM1"
+    baud_rate: int = 9600
+    data_bits: int = 8
+    parity: str = "none"
+    stop_bits: str = "one"
+    line_ending: str = "\r\n"
+    on_commands: tuple[str, ...] = ()
+    off_commands: tuple[str, ...] = ()
+    command_delay_ms: int = 50
+    reply_timeout_ms: int = 200
+    brightness_template: str = ""
+    brightness_max: int = 255
+    channels: tuple[LightChannel, ...] = field(default_factory=_default_light_channels)
+
+    def normalized(self) -> "LightSettings":
+        maximum = int(_clamp(int(self.brightness_max), LIGHT_BRIGHTNESS_MAX_RANGE))
+        channels = tuple(c.normalized(maximum) for c in list(self.channels)[:LIGHT_CHANNEL_COUNT_MAX])
+        return LightSettings(
+            enabled=bool(self.enabled),
+            port=str(self.port).strip().upper() or "COM1",
+            baud_rate=max(1, int(self.baud_rate)),
+            data_bits=int(_clamp(int(self.data_bits), (5, 8))),
+            parity=_choice(str(self.parity).lower(), SERIAL_PARITIES, "none"),
+            stop_bits=_choice(str(self.stop_bits).lower(), SERIAL_STOP_BITS, "one"),
+            line_ending=_choice(str(self.line_ending), tuple(LINE_ENDINGS), "\r\n"),
+            on_commands=tuple(str(c) for c in self.on_commands if str(c).strip()),
+            off_commands=tuple(str(c) for c in self.off_commands if str(c).strip()),
+            command_delay_ms=int(_clamp(int(self.command_delay_ms), LIGHT_COMMAND_DELAY_MS_RANGE)),
+            reply_timeout_ms=int(_clamp(int(self.reply_timeout_ms), LIGHT_REPLY_TIMEOUT_MS_RANGE)),
+            brightness_template=str(self.brightness_template).strip(),
+            brightness_max=maximum,
+            channels=channels or _default_light_channels(),
+        )
+
+    @property
+    def controls_brightness(self) -> bool:
+        return bool(self.brightness_template)
+
+
+@dataclass(frozen=True)
+class CcdMachineSettings:
+    """Machine-level CCD configuration persisted by `CcdMachineSettingsStore`."""
+
+    connection: CameraConnectionSettings = field(default_factory=CameraConnectionSettings)
+    meter_wheel: MeterWheelSettings = field(default_factory=MeterWheelSettings)
+    save: SaveSettings = field(default_factory=SaveSettings)
+    sensor_relay: SensorRelaySettings = field(default_factory=SensorRelaySettings)
+    light: LightSettings = field(default_factory=LightSettings)
+
+    def normalized(self) -> "CcdMachineSettings":
+        return CcdMachineSettings(
+            connection=self.connection.normalized(),
+            meter_wheel=self.meter_wheel.normalized(),
+            save=self.save.normalized(),
+            sensor_relay=self.sensor_relay.normalized(),
+            light=self.light.normalized(),
+        )
+
+
+@dataclass(frozen=True)
+class CameraStatus:
+    state: CameraState = CameraState.OFFLINE
+    camera_name: str = ""
+    frame_width: int = 0
+    frame_height: int = 0
+    scanned_lines: int = 0
+    has_signal: bool = False
+    message: str = ""
+
+    @property
+    def connected(self) -> bool:
+        return self.state != CameraState.OFFLINE
+
+    @property
+    def previewing(self) -> bool:
+        return self.state == CameraState.PREVIEWING
+
+    @property
+    def capture_in_progress(self) -> bool:
+        return self.state == CameraState.CAPTURING
+
+
+@dataclass(frozen=True)
+class MeterWheelSnapshot:
+    connected: bool = False
+    encoder_value: int = 0
+    compare_value: int = 0
+    extension_status: tuple[bool, ...] = (False,) * EXTENSION_CHANNEL_COUNT

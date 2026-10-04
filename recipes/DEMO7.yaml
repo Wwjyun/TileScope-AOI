@@ -1,0 +1,55 @@
+# Synthetic example only; no production acceptance settings.
+recipe_name: DEMO7
+product_id: DEMO_PRODUCT
+machine_id: DEMO_MACHINE
+version: 1.0.0
+gpu:
+  mode: cpu
+  tiling: false
+  display: false
+  dll_path: gpu/visionflow_cuda.dll
+  fallback_to_cpu: true
+tile:
+  mode: grid
+  width: 128
+  height: 128
+  overlap_x: 0
+  overlap_y: 0
+decision:
+  mode: all_detectors_must_pass
+  important_detectors:
+  - demo7
+  max_ng_count: 0
+detectors:
+  demo7:
+    enabled: true
+    use_gpu: false
+    display_name: demo7
+    params:
+      center_mask_enabled: false
+      center_mask_use_image_center: true
+      center_mask_x: 0
+      center_mask_y: 0
+      center_mask_width: 0
+      center_mask_height: 0
+      edge_mask_enabled: false
+      edge_inset_all: 0
+      edge_inset_left: 0
+      edge_inset_right: 0
+      edge_inset_top: 0
+      edge_inset_bottom: 0
+      threshold_value: 128
+      max_value: 255
+      binary_inv: false
+      contour_mode: list
+      approx_epsilon_ratio: 0.01
+      min_vertices: 3
+      min_area: 16.0
+      max_area: 4096.0
+output:
+  pixel_size_um_per_px: null
+  save_overlay: true
+  save_ng_tiles: true
+  save_csv: true
+  save_matrix_csv: true
+  save_json: true

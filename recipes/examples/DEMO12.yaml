@@ -1,0 +1,44 @@
+# Synthetic example only; no production acceptance settings.
+recipe_name: DEMO12
+product_id: DEMO_PRODUCT
+machine_id: DEMO_MACHINE
+version: 1.0.0
+gpu:
+  mode: cpu
+  tiling: false
+  display: false
+  dll_path: gpu/visionflow_cuda.dll
+  fallback_to_cpu: true
+tile:
+  mode: grid
+  width: 32
+  height: 32
+  overlap_x: 0
+  overlap_y: 0
+decision:
+  mode: all_detectors_must_pass
+  important_detectors:
+  - demo12
+  max_ng_count: 0
+detectors:
+  demo12:
+    enabled: true
+    use_gpu: false
+    display_name: demo12
+    params:
+      model_id: yolox_tiny_fixture
+      confidence_threshold: 0.5
+      nms_iou_threshold: 0.5
+      target_class_ids: ''
+      max_detections: 32
+      min_box_area_px: 0.0
+      inference_backend: onnxruntime_cpu
+      precision: fp32
+      class_agnostic_nms: false
+output:
+  pixel_size_um_per_px: null
+  save_overlay: false
+  save_ng_tiles: false
+  save_csv: false
+  save_matrix_csv: false
+  save_json: true

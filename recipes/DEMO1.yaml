@@ -1,0 +1,71 @@
+# Synthetic example only; no production acceptance settings.
+recipe_name: DEMO1
+product_id: DEMO_PRODUCT
+machine_id: DEMO_MACHINE
+version: 1.0.0
+gpu:
+  mode: cpu
+  tiling: false
+  display: false
+  dll_path: gpu/visionflow_cuda.dll
+  fallback_to_cpu: true
+tile:
+  mode: grid
+  width: 128
+  height: 128
+  overlap_x: 0
+  overlap_y: 0
+decision:
+  mode: all_detectors_must_pass
+  important_detectors:
+  - demo1
+  max_ng_count: 0
+detectors:
+  demo1:
+    enabled: true
+    use_gpu: false
+    display_name: demo1
+    params:
+      center_mask_enabled: false
+      center_mask_use_image_center: true
+      center_mask_x: 0
+      center_mask_y: 0
+      center_mask_width: 0
+      center_mask_height: 0
+      edge_mask_enabled: false
+      edge_inset_all: 0
+      edge_inset_left: 0
+      edge_inset_right: 0
+      edge_inset_top: 0
+      edge_inset_bottom: 0
+      background_kernel_size: 15
+      background_kernel_divisor: 16
+      background_kernel_min: 3
+      background_kernel_max: 63
+      gaussian_sigma: 0.0
+      mad_scale: 1.4826
+      noise_sigma_floor: 1.0e-06
+      residual_threshold_floor: 4.0
+      residual_sigma_multiplier: 2.0
+      candidate_max_value: 255
+      morph_operation: none
+      morph_kernel: 3
+      morph_iterations: 1
+      connectivity: 8
+      min_component_area_px: 4
+      min_component_area_ratio: 0.0
+      max_component_area_px: 4096
+      max_component_area_ratio: 0.0
+      component_border_margin_px: 0
+      background_padding_min_px: 4
+      background_padding_max_px: 16
+      background_padding_scale: 1.0
+      min_background_pixels: 4
+      cnr_noise_floor: 1.0e-06
+output:
+  pixel_size_um_per_px: null
+  save_overlay: true
+  save_ng_tiles: true
+  save_csv: true
+  save_matrix_csv: true
+  save_json: true

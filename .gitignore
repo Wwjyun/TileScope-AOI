@@ -1,0 +1,64 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+env/
+.venv/
+venv/
+
+outputs_validation/
+outputs/logs/
+outputs/ccd_snapshots/
+outputs/csv/*
+!outputs/csv/.gitkeep
+outputs/reports/
+# Machine-level CCD camera and meter wheel settings written by the GUI.
+/config/ccd_machine.json
+/config/ccd_machine.json.tmp
+tmp_validation_input.png
+tmp_validation_pass.png
+tmp_validation_gui.png
+
+build/
+dist/
+
+# Local versioned release packages live under release_artifacts/.
+*.zip
+!tests/fixtures/**/*.zip
+
+node_modules/
+*.pdb
+*.ilk
+*.obj
+/gpu/cuda_build_preflight.json
+/gpu/test_cuda_api.exe
+/gpu/cufft64_*.dll
+/gpu/visionflow_cuda.dll
+/gpu/visionflow_cuda.exp
+/gpu/visionflow_cuda.lib
+.coverage
+htmlcov/
+.claude/scheduled_tasks.lock
+
+# Personal documents must never enter this public repository.
+# The resume carries a phone number and email address; keep it gitignored even
+# though it lives outside the tracked tree, as a guard against `git add .`.
+Wang_WeiJyun_*.html
+Wang_WeiJyun_*.pdf
+*Resume*.html
+*Resume*.pdf
+*履歷*.pdf
+*履歷*.html
+
+# Hypothesis cache and ad-hoc test output redirects.
+.hypothesis/
+tmp_*.txt
+
+# Local assistant configuration and private artifact inventories are not demo source.
+/.claude/
+/codex-skills/
+/.mcp.json
+/CLAUDE.md
+/HERMES.md
+/ARTIFACTS.md

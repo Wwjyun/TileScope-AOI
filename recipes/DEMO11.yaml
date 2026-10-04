@@ -1,0 +1,40 @@
+# Synthetic example only; no production acceptance settings.
+recipe_name: DEMO11
+product_id: DEMO_PRODUCT
+machine_id: DEMO_MACHINE
+version: 1.0.0
+gpu:
+  mode: cpu
+  tiling: false
+  display: false
+  dll_path: gpu/visionflow_cuda.dll
+  fallback_to_cpu: true
+tile:
+  mode: grid
+  width: 128
+  height: 128
+  overlap_x: 0
+  overlap_y: 0
+decision:
+  mode: all_detectors_must_pass
+  important_detectors:
+  - demo11
+  max_ng_count: 0
+detectors:
+  demo11:
+    enabled: true
+    use_gpu: false
+    display_name: demo11
+    params:
+      mode: pass
+      defect_x: 0
+      defect_y: 0
+      defect_width: 16
+      defect_height: 16
+output:
+  pixel_size_um_per_px: null
+  save_overlay: true
+  save_ng_tiles: true
+  save_csv: true
+  save_matrix_csv: true
+  save_json: true

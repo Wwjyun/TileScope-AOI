@@ -1,0 +1,13 @@
+schema_version: 1
+cases:
+  # Paths are relative to this manifest. Replace every placeholder with a traceable real AOI image.
+  - {id: aoi_pass, recipe: ../recipes/DEMO.yaml, image: samples/DEMO_PASS.png, expected_final: PASS}
+  - {id: aoi_ng, recipe: ../recipes/DEMO.yaml, image: samples/DEMO_NG.png, expected_final: NG}
+  - {id: circle_pass, recipe: ../recipes/DEMO4.yaml, image: samples/DEMO4_PASS.png, expected_final: PASS}
+  - {id: circle_ng, recipe: ../recipes/DEMO4.yaml, image: samples/DEMO4_NG.png, expected_final: NG}
+  - {id: negative_pass, recipe: ../recipes/DEMO3.yaml, image: samples/DEMO3_PASS.png, expected_final: PASS}
+  - {id: negative_ng, recipe: ../recipes/DEMO3.yaml, image: samples/DEMO3_NG.png, expected_final: NG}
+  - {id: ratio_pass, recipe: ../recipes/DEMO5.yaml, image: samples/DEMO5_PASS.png, expected_final: PASS}
+  - {id: ratio_ng, recipe: ../recipes/DEMO5.yaml, image: samples/DEMO5_NG.png, expected_final: NG}
+  - {id: frame_pass, recipe: ../recipes/DEMO10.yaml, image: samples/DEMO10_PASS.png, expected_final: PASS}
+  - {id: frame_ng, recipe: ../recipes/DEMO10.yaml, image: samples/DEMO10_NG.png, expected_final: NG}

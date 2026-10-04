@@ -1,0 +1,368 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+
+import cv2
+import numpy as np
+
+from core.preprocess_plan import AdaptiveMean, Gray, PreprocessDagNode, PreprocessDagPlan, Threshold
+
+
+@dataclass(frozen=True, slots=True)
+class SizeRule:
+    target_width: int
+    width_tolerance: int
+    target_height: int
+    height_tolerance: int
+
+
+@dataclass(frozen=True, slots=True)
+class Candidate:
+    bbox: tuple[int, int, int, int]
+    area: float
+    reject_reason: str = ""
+
+    def to_dict(self, offset_x: int = 0, offset_y: int = 0) -> dict:
+        x, y, width, height = self.bbox
+        return {
+            "bbox": [int(x + offset_x), int(y + offset_y), int(width), int(height)],
+            "area": float(np.round(self.area, 3)),
+            "reject_reason": self.reject_reason,
+        }
+
+
+REJECTED_PREVIEW = 5
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateSet:
+    """Size-accepted candidates in descending area order, plus what the metadata reports of the rest.
+
+    Textured masks can produce hundreds of thousands of contours that the size rule rejects; only
+    their count and the first ``REJECTED_PREVIEW`` (with reasons) are reported, so they are not
+    materialised as objects.
+    """
+
+    accepted: tuple[Candidate, ...]
+    rejected_preview: tuple[Candidate, ...]
+    raw_count: int
+    rejected_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class EdgeGaps:
+    left: int
+    top: int
+    right: int
+    bottom: int
+
+    @property
+    def maximum(self) -> int:
+        return max(self.left, self.top, self.right, self.bottom)
+
+    def to_dict(self) -> dict[str, int]:
+        return {"left": self.left, "top": self.top, "right": self.right, "bottom": self.bottom}
+
+
+@dataclass(frozen=True, slots=True)
+class PairMatch:
+    outer: Candidate
+    inner: Candidate
+    edge_gaps: EdgeGaps
+
+
+@dataclass(frozen=True, slots=True)
+class Demo10DetectorConfig:
+    max_value: int
+    outer_threshold: int
+    outer_invert: bool
+    outer_contour_mode: str
+    outer_rule: SizeRule
+    inner_adaptive_block_size: int
+    inner_adaptive_c: float
+    inner_invert: bool
+    inner_contour_mode: str
+    inner_rule: SizeRule
+    max_edge_gap: int
+    roi_inset_px: int
+
+    @classmethod
+    def from_params(cls, params: dict) -> "Demo10DetectorConfig":
+        odd_block = max(3, int(params.get("inner_adaptive_block_size", 15)))
+        if odd_block % 2 == 0:
+            odd_block += 1
+        return cls(
+            max_value=int(params.get("max_value", 255)),
+            outer_threshold=int(params.get("outer_threshold", 128)),
+            outer_invert=bool(params.get("outer_invert", False)),
+            outer_contour_mode=str(params.get("outer_contour_mode", 'list')),
+            outer_rule=SizeRule(
+                int(params.get("outer_target_width", 96)),
+                int(params.get("outer_width_tolerance", 3)),
+                int(params.get("outer_target_height", 80)),
+                int(params.get("outer_height_tolerance", 3)),
+            ),
+            inner_adaptive_block_size=odd_block,
+            inner_adaptive_c=float(params.get("inner_adaptive_c", 2.0)),
+            inner_invert=bool(params.get("inner_invert", False)),
+            inner_contour_mode=str(params.get("inner_contour_mode", 'list')),
+            inner_rule=SizeRule(
+                int(params.get("inner_target_width", 64)),
+                int(params.get("inner_width_tolerance", 3)),
+                int(params.get("inner_target_height", 48)),
+                int(params.get("inner_height_tolerance", 3)),
+            ),
+            max_edge_gap=int(params.get("max_edge_gap", 20)),
+            roi_inset_px=max(0, int(params.get("roi_inset_px", 0))),
+        )
+
+
+class Demo10DetectorMaskPreprocessor:
+    def __init__(self, config: Demo10DetectorConfig):
+        self.config = config
+
+    @property
+    def signature(self) -> tuple:
+        config = self.config
+        return (
+            "900_dual_masks",
+            config.outer_threshold,
+            config.outer_invert,
+            config.inner_adaptive_block_size,
+            config.inner_adaptive_c,
+            config.inner_invert,
+            config.max_value,
+        )
+
+    def plan(self) -> PreprocessDagPlan:
+        config = self.config
+        return PreprocessDagPlan(
+            name="900_shared_gray_dual_masks",
+            nodes=(
+                PreprocessDagNode("gray", "root", Gray()),
+                PreprocessDagNode(
+                    "outer_mask",
+                    "gray",
+                    Threshold(config.outer_threshold, config.max_value, config.outer_invert),
+                ),
+                PreprocessDagNode(
+                    "inner_mask",
+                    "gray",
+                    AdaptiveMean(
+                        config.inner_adaptive_block_size,
+                        config.inner_adaptive_c,
+                        config.max_value,
+                        config.inner_invert,
+                    ),
+                ),
+            ),
+            outputs=("outer_mask", "inner_mask"),
+        )
+
+
+class CandidateAnalyzer:
+    @staticmethod
+    def contour_mode(mode: str) -> int:
+        normalized = str(mode).lower()
+        if normalized in {"all", "list"}:
+            return cv2.RETR_LIST
+        if normalized == "tree":
+            return cv2.RETR_TREE
+        return cv2.RETR_EXTERNAL
+
+    @classmethod
+    def device_contour_mode(cls, mode: str) -> str | None:
+        """The device contour mode with the same flat contour list, or ``None`` to stay on host."""
+        return {cv2.RETR_LIST: "list", cv2.RETR_EXTERNAL: "external"}.get(cls.contour_mode(mode))
+
+    def analyze(self, binary, mode: str, rule: SizeRule) -> CandidateSet:
+        contours, _ = cv2.findContours(binary, self.contour_mode(mode), cv2.CHAIN_APPROX_SIMPLE)
+        bboxes = np.zeros((len(contours), 4), np.int64)
+        areas = np.zeros(len(contours), np.float64)
+        points = np.zeros(len(contours), np.int64)
+        for index, contour in enumerate(contours):
+            points[index] = len(contour)
+            if len(contour) < 3:
+                continue
+            areas[index] = cv2.contourArea(contour)
+            if areas[index] > 0.0:  # boundingRect only for contours that survive the filters
+                bboxes[index] = cv2.boundingRect(contour)
+        return self._classify(bboxes, points, areas, rule)
+
+    def from_summaries(self, records, rule: SizeRule) -> CandidateSet:
+        """Build the same candidate set from device ``boundingRect``/``contourArea`` records."""
+        bboxes = np.stack(
+            [records["x"], records["y"], records["width"], records["height"]], axis=1
+        ).astype(np.int64)
+        return self._classify(
+            bboxes.reshape(-1, 4),
+            np.asarray(records["point_count"], np.int64),
+            np.asarray(records["area"], np.float64),
+            rule,
+        )
+
+    def _classify(self, bboxes, points, areas, rule: SizeRule) -> CandidateSet:
+        valid = np.flatnonzero((points >= 3) & (areas > 0.0))
+        # Stable descending area order keeps equal areas in contour order, like a stable
+        # sort(reverse=True) of the contour list.
+        order = valid[np.argsort(-areas[valid], kind="stable")]
+        widths = bboxes[order, 2]
+        heights = bboxes[order, 3]
+        passes = (
+            (np.abs(widths - rule.target_width) <= rule.width_tolerance)
+            & (np.abs(heights - rule.target_height) <= rule.height_tolerance)
+        )
+        make = lambda index: Candidate(  # noqa: E731
+            tuple(int(value) for value in bboxes[index]), float(areas[index])
+        )
+        accepted = tuple(make(index) for index in order[passes])
+        rejected_indices = order[~passes]
+        preview = tuple(
+            replace(candidate, reject_reason=self.reject_reason(candidate, rule))
+            for candidate in (make(index) for index in rejected_indices[:REJECTED_PREVIEW])
+        )
+        return CandidateSet(accepted, preview, int(order.size), int(rejected_indices.size))
+
+    @staticmethod
+    def passes_size(candidate: Candidate, rule: SizeRule) -> bool:
+        _, _, width, height = candidate.bbox
+        return (
+            abs(width - rule.target_width) <= rule.width_tolerance
+            and abs(height - rule.target_height) <= rule.height_tolerance
+        )
+
+    @staticmethod
+    def reject_reason(candidate: Candidate, rule: SizeRule) -> str:
+        _, _, width, height = candidate.bbox
+        width_reason = "W_LOW" if width < rule.target_width - rule.width_tolerance else (
+            "W_HIGH" if width > rule.target_width + rule.width_tolerance else ""
+        )
+        height_reason = "H_LOW" if height < rule.target_height - rule.height_tolerance else (
+            "H_HIGH" if height > rule.target_height + rule.height_tolerance else ""
+        )
+        return "/".join(reason for reason in (width_reason, height_reason) if reason) or "SIZE"
+
+
+class PairGeometry:
+    @staticmethod
+    def edge_gaps(outer: Candidate, inner: Candidate) -> EdgeGaps | None:
+        outer_x, outer_y, outer_w, outer_h = outer.bbox
+        inner_x, inner_y, inner_w, inner_h = inner.bbox
+        outer_right, outer_bottom = outer_x + outer_w, outer_y + outer_h
+        inner_right, inner_bottom = inner_x + inner_w, inner_y + inner_h
+        if inner_x < outer_x or inner_y < outer_y or inner_right > outer_right or inner_bottom > outer_bottom:
+            return None
+        return EdgeGaps(
+            inner_x - outer_x,
+            inner_y - outer_y,
+            outer_right - inner_right,
+            outer_bottom - inner_bottom,
+        )
+
+    def find_valid_pair(
+        self,
+        outer_candidates: tuple[Candidate, ...],
+        inner_candidates: tuple[Candidate, ...],
+        max_edge_gap: int,
+    ) -> PairMatch | None:
+        for outer in outer_candidates:
+            for inner in inner_candidates:
+                gaps = self.edge_gaps(outer, inner)
+                if gaps is not None and gaps.maximum <= max_edge_gap:
+                    return PairMatch(outer, inner, gaps)
+        return None
+
+
+class Demo10DetectorResultAssembler:
+    @staticmethod
+    def failure_reason(outer: CandidateSet, inner: CandidateSet) -> str:
+        if not outer.accepted:
+            return "no_outer_size_candidate"
+        if not inner.accepted:
+            return "no_inner_size_candidate"
+        return "edge_gap_out_of_tolerance_or_inner_not_inside_outer"
+
+    @staticmethod
+    def failure_bbox(
+        outer: CandidateSet,
+        inner: CandidateSet,
+        image_shape: tuple[int, int],
+        offset_x: int,
+        offset_y: int,
+    ) -> list[int]:
+        candidate = (inner.accepted or outer.accepted or (None,))[0]
+        if candidate is not None:
+            x, y, width, height = candidate.bbox
+            return [x + offset_x, y + offset_y, width, height]
+        height, width = image_shape
+        return [0, 0, int(width), int(height)]
+
+    @staticmethod
+    def debug_pair(
+        outer: CandidateSet,
+        inner: CandidateSet,
+        offset_x: int,
+        offset_y: int,
+        max_edge_gap: int,
+    ) -> dict | None:
+        if not outer.accepted or not inner.accepted:
+            return None
+        outer_candidate, inner_candidate = outer.accepted[0], inner.accepted[0]
+        gaps = PairGeometry.edge_gaps(outer_candidate, inner_candidate)
+        return {
+            "outer": outer_candidate.to_dict(offset_x, offset_y),
+            "inner": inner_candidate.to_dict(offset_x, offset_y),
+            "edge_gaps": gaps.to_dict() if gaps else None,
+            "edge_gap_pass": gaps is not None and gaps.maximum <= max_edge_gap,
+        }
+
+    def assemble(
+        self,
+        config: Demo10DetectorConfig,
+        outer: CandidateSet,
+        inner: CandidateSet,
+        image_shape: tuple[int, int],
+        offset_x: int,
+        offset_y: int,
+    ) -> list[dict]:
+        bbox = self.failure_bbox(outer, inner, image_shape, offset_x, offset_y)
+        metadata = {
+            "reason": self.failure_reason(outer, inner),
+            "outer_candidate_count": len(outer.accepted),
+            "outer_raw_candidate_count": outer.raw_count,
+            "outer_rejected_candidate_count": outer.rejected_count,
+            "inner_candidate_count": len(inner.accepted),
+            "inner_raw_candidate_count": inner.raw_count,
+            "inner_rejected_candidate_count": inner.rejected_count,
+            "outer_threshold": config.outer_threshold,
+            "outer_contour_mode": config.outer_contour_mode,
+            "outer_target_width": config.outer_rule.target_width,
+            "outer_width_tolerance": config.outer_rule.width_tolerance,
+            "outer_target_height": config.outer_rule.target_height,
+            "outer_height_tolerance": config.outer_rule.height_tolerance,
+            "inner_threshold_method": "adaptive_mean",
+            "inner_adaptive_block_size": config.inner_adaptive_block_size,
+            "inner_adaptive_c": config.inner_adaptive_c,
+            "inner_contour_mode": config.inner_contour_mode,
+            "inner_target_width": config.inner_rule.target_width,
+            "inner_width_tolerance": config.inner_rule.width_tolerance,
+            "inner_target_height": config.inner_rule.target_height,
+            "inner_height_tolerance": config.inner_rule.height_tolerance,
+            "max_edge_gap": config.max_edge_gap,
+            "roi_inset_px": config.roi_inset_px,
+            "roi_offset_local": [offset_x, offset_y],
+            "best_outer": outer.accepted[0].to_dict(offset_x, offset_y) if outer.accepted else None,
+            "best_inner": inner.accepted[0].to_dict(offset_x, offset_y) if inner.accepted else None,
+            "debug_outer_candidates": [item.to_dict(offset_x, offset_y) for item in outer.accepted[:5]],
+            "debug_inner_candidates": [item.to_dict(offset_x, offset_y) for item in inner.accepted[:5]],
+            "debug_pair": self.debug_pair(outer, inner, offset_x, offset_y, config.max_edge_gap),
+            "debug_outer_rejected_candidates": [item.to_dict(offset_x, offset_y) for item in outer.rejected_preview],
+            "debug_inner_rejected_candidates": [item.to_dict(offset_x, offset_y) for item in inner.rejected_preview],
+        }
+        return [{
+            "type": "900_frame_spacing_ng",
+            "bbox_local": bbox,
+            "area": float(np.round(max(0, bbox[2]) * max(0, bbox[3]), 3)),
+            "confidence": 1.0,
+            "metadata": metadata,
+        }]

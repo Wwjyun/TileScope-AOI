@@ -1,0 +1,84 @@
+# 傳統 CV Detector 調參工具
+
+這個目錄是 VisionFlow 傳統電腦視覺 Detector 的標準調參台。GUI、測試與未來 Detector 對照都以 `ContourProcessingEngine` 的 CPU/OpenCV 語意為基準。
+
+## 執行
+
+```powershell
+.\env\Scripts\python.exe -m contour_preprocess_tool
+```
+
+非互動啟動檢查：
+
+```powershell
+$env:QT_QPA_PLATFORM='offscreen'
+.\env\Scripts\python.exe -m contour_preprocess_tool --smoke-test
+```
+
+## 精度契約
+
+- 影像只解碼一次為完整解析度 `uint8` BGR；Gaussian、Threshold、Morphology、屏蔽、輪廓與面積一律在原圖像素上執行。
+- GUI 不再用 OpenCV `resize` 建立運算縮圖。Windows GUI 優先以 `QOpenGLWidget` 顯示完整 QPixmap；符合視窗只改 view transform，不會改變處理輸入。
+- 取消「符合視窗大小」後是 1:1 像素，可用捲軸與滑鼠滾輪平移／縮放。OpenGL 不可用時回退 Qt raster，處理結果不變。
+- 預覽與儲存共用同一個 `ContourProcessingEngine` 及同一張 `original_full`，不得再出現預覽縮圖與儲存原圖結果不同。
+
+## 匯出 Detector
+
+1. 在 GUI 排定 Recipe steps 並調整參數。
+2. 若 Detector 接受所有有效輪廓，選「輪廓」，不要選「全部」；「全部」仍代表圓形、矩形、多邊形三種形狀篩選的聯集。
+3. 按「匯出偵測器」，輸入唯一的 Detector ID、繁中顯示名稱及匯出位置。
+4. 工具會建立獨立 bundle，且內容固定只有：
+   - `detector_<id>.py`：凍結目前完整參數與步驟順序、可接到 `BaseDetector` 的 OpenCV CPU reference。
+   - `REGISTER_DETECTOR.md`：逐步說明複製檔案、修改 `DetectorManager`、加入繁中標籤與 Recipe 的方式。
+5. 依 bundle 內文件註冊後，新增工具 engine 與 Detector 的 mask 像素級、contour／bbox／area／PASS-NG 等價測試。
+
+「載入調參 Recipe」仍支援既有 `visionflow-traditional-cv-tuning/v1` JSON，方便載回舊參數繼續調整；主畫面的原「匯出調參 Recipe」已由「匯出偵測器」取代。
+
+參數自上次載入 Recipe 或成功匯出 Detector 後有異動時，視窗標題會顯示修改標記；關閉前會要求確認是否捨棄。完整原圖仍在背景儲存時，程式會阻止關閉以避免留下不完整檔案。
+
+匯出的 Detector 在產線呼叫 `ContourProcessingEngine.analyze()`：只產生 mask、detections 與 stats，不複製原圖也不繪製標註圖或文字；GUI 預覽與儲存使用的 `process()` 是同一份 analysis 再加上繪圖，因此兩者的 mask 與 detections 保證相同。
+
+中心／邊緣屏蔽與所有座標都是相對 Detector 收到的輸入（AOI 的每個 tile／ROI），不是整張原圖。匯出時會記錄調參影像尺寸為 `TUNING_IMAGE_SIZE`；啟用屏蔽且產線輸入尺寸不同時，Detector 結果的 `execution.tuning_warnings` 會提出警告。每筆 defect 的 `metadata.touches_tile_border` 標記 bbox 是否貼到輸入邊界（扣除邊緣屏蔽），貼邊代表缺陷可能延伸到相鄰 tile、面積只量到一部分。匯出前檢查若發現啟用屏蔽、未載入影像，或面積／邊長／半徑上限超過調參影像可容納的尺寸，會列出注意事項並要求確認後才匯出。
+
+已載入調參影像時，bundle 另外附帶 golden 回歸資料：`golden_<module>.json` 記錄影像檔名、寬高、檔案與解碼像素 SHA256、參數雜湊、工具版本及該影像的 detections／PASS-NG；`test_<module>_golden.py` 可複製到 `tests/`，永遠檢查 golden 與 Detector 凍結參數來自同一次匯出，並在環境變數 `VISIONFLOW_TUNING_GOLDEN_DIR` 指向影像資料夾時重播調參影像、比對 detections。調參影像可能是產線影像，不要提交到 repository。
+
+匯出的 Detector 明確固定走 CPU，不會因 Recipe 誤設 `use_gpu: true` 而把 CPU 運算回報成 CUDA。要加入 GPU 支援時，仍須把有效步驟遷移到共用 immutable `PreprocessPlan`，並完成 CPU/GPU 等價與 fallback 測試。
+
+demo2 已有回歸測試證明 Gray → Gaussian 3 → Adaptive Mean Inv 21/C=1 → 3×3 Open → 四邊屏蔽 → LIST contours 的 mask 逐像素一致，且原始輪廓數一致。
+
+## 結果不同時的比對清單
+
+- 工具必須載入 Detector 真正收到的同一張 tile／ROI；拿整張來源圖和 AOI 切圖結果比較，座標、邊界與局部 Adaptive Mean 都會不同。
+- 確認 Recipe steps 順序完全相同，且沒有多開 `convertScaleAbs`、Median、CLAHE、Averaging 或 Negative。
+- demo2 使用 `List` 與「輪廓」；「全部」仍會套形狀篩選。
+- Gaussian sigma、Adaptive block/C/invert/max value、Morphology kernel/次數、四邊內縮及面積上下限都要一致。
+- 調參時先和 Detector CPU 路徑比較；CUDA 路徑屬另一層 CPU/GPU 等價驗收，不應拿顯示用 OpenGL 當作 Detector CUDA 計算。
+
+## OOP 邊界
+
+- `engine.py`：無 Qt 相依的處理引擎（`analyze()` 偵測路徑、`process()` 偵測＋標註）、不可變 Recipe 快照與結果模型。
+- `image_io.py`：Unicode-safe OpenCV 讀寫。
+- `recipe_io.py`：版本化調參 Recipe JSON。
+- `detector_export.py`：產生 Detector `.py` 與註冊教學 `.md` bundle。
+- `export_validation.py`：匯出前 readiness validation，不建立或修改檔案。
+- `session_state.py`：無 Qt 的參數基準與 dirty tracking。
+- `golden.py`：無 Qt 的 golden 回歸樣本（影像／像素／參數雜湊與 detections）。
+- `workers.py`：preview／save 背景 QRunnable 與 signals。
+- `viewer.py`：完整解析度 OpenGL／Qt raster 顯示。
+- `app.py`：Qt composition root、參數控制與背景工作生命週期。
+
+## Windows 獨立版
+
+由 repository 根目錄執行：
+
+```powershell
+.\packaging\scripts\build_contour_preprocess_tool.ps1 -Version 1.1.0
+```
+
+完成後執行：
+
+```powershell
+& '.\dist\Traditional-CV-Tuning-Tool\Traditional CV Tuning Tool.exe'
+```
+
+Release ZIP 為 `Traditional-CV-Tuning-Tool-v1.1.0-windows-x64.zip`，Git tag 為 `cv-tuning-tool-v1.1.0`。EXE 為 Windows x64 one-file GUI，不需另裝 Python。OpenCV 處理使用 CPU，不含 CUDA DLL；Qt 會在可用時用 OpenGL 顯示完整解析度影像，否則自動使用 raster fallback。程式尚未簽章，Windows SmartScreen 可能顯示未知發行者。

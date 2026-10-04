@@ -1,0 +1,52 @@
+# Synthetic example only; no production acceptance settings.
+recipe_name: DEMO4
+product_id: DEMO_PRODUCT
+machine_id: DEMO_MACHINE
+version: 1.0.0
+gpu:
+  mode: cpu
+  tiling: false
+  display: false
+  dll_path: gpu/visionflow_cuda.dll
+  fallback_to_cpu: true
+tile:
+  mode: grid
+  width: 128
+  height: 128
+  overlap_x: 0
+  overlap_y: 0
+decision:
+  mode: all_detectors_must_pass
+  important_detectors:
+  - demo4
+  max_ng_count: 0
+detectors:
+  demo4:
+    enabled: true
+    use_gpu: false
+    display_name: demo4
+    params:
+      threshold_method: adaptive_mean
+      max_value: 255
+      invert: false
+      blur_size: 3
+      adaptive_block_size: 15
+      adaptive_c: 2.0
+      roi_inset_px: 0
+      contour_mode: list
+      morph_operation: none
+      morph_kernel: 3
+      morph_iterations: 1
+      process_scale: 1.0
+      min_area: 16.0
+      max_area: 4096.0
+      min_circularity: 0.5
+      min_fill_ratio: 0.0
+      max_fill_ratio: 0.0
+output:
+  pixel_size_um_per_px: null
+  save_overlay: true
+  save_ng_tiles: true
+  save_csv: true
+  save_matrix_csv: true
+  save_json: true
