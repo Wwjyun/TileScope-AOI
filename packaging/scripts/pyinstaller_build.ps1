@@ -11,7 +11,12 @@ function Invoke-PyInstallerBuild {
         [Parameter(Mandatory = $true)][string]$ExecutableName,
         [Parameter(Mandatory = $true)][string]$Version,
         [string]$DistPath = "",
-        [string]$WorkPath = ""
+        [string]$WorkPath = "",
+        # The strict environment check requires the local Python to match requirements.lock.txt
+        # (Python 3.12 and every pinned package). A dev machine may run a newer Python, so callers
+        # that know the frozen artifact is still valid can opt out. Default stays on for existing
+        # callers.
+        [switch]$SkipEnvironmentCheck
     )
 
     foreach ($requiredPath in @($PythonPath, $SpecPath)) {
@@ -25,9 +30,11 @@ function Invoke-PyInstallerBuild {
     if (-not (Test-Path -LiteralPath $environmentCheck -PathType Leaf)) {
         throw "Build environment validator not found: $environmentCheck"
     }
-    & $PythonPath $environmentCheck --check-environment
-    if ($LASTEXITCODE -ne 0) {
-        throw "Build Python does not match requirements.lock.txt"
+    if (-not $SkipEnvironmentCheck) {
+        & $PythonPath $environmentCheck --check-environment
+        if ($LASTEXITCODE -ne 0) {
+            throw "Build Python does not match requirements.lock.txt"
+        }
     }
 
     $versionWriter = Join-Path $script:PyInstallerBuildHelperRoot "write_version_info.py"

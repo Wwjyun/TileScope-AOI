@@ -235,6 +235,18 @@ def run_smoke_test() -> int:
             "" if cuda_ok else f"{topic} {payload.get('code', '')}",
         ))
 
+    # 5. the sidecar never imports Qt (PySide6/shiboken6/PyQt), in source or frozen form.
+    qt_modules = sorted(
+        name
+        for name in sys.modules
+        if name.split(".", 1)[0] in {"PySide6", "shiboken6", "PyQt5", "PyQt6"}
+    )
+    checks.append((
+        "sidecar 不載入任何 Qt 模組（PySide6／shiboken6／PyQt）",
+        not qt_modules,
+        "" if not qt_modules else "、".join(qt_modules),
+    ))
+
     all_passed = all(ok for _, ok, _ in checks)
     for name, ok, detail in checks:
         line = f"[{'PASS' if ok else 'FAIL'}] {name}" + (f"：{detail}" if detail else "")
