@@ -3,7 +3,7 @@
 以 Recipe 驅動的 OpenCV 檢測程式，提供 PySide6 GUI 與選用 CUDA backend。
 目前使用人工生成的幾何圖形與中性預設值；不提供產品驗收或產線校準設定。
 
-**目前維持私有，公開散布尚未獲准。** 職務成果歸屬、既有取像程式及第三方元件的使用範圍仍待確認，詳見 [來源紀錄](docs/source-provenance.md)、[第三方授權](THIRD_PARTY_NOTICES.md) 與 `distribution-policy.json`。
+**目前維持私有，公開散布尚未獲准。** 職務成果歸屬及第三方元件的使用範圍仍待確認；既有取像程式已取得權利人同意，詳見 [來源紀錄](docs/source-provenance.md)、[第三方授權](THIRD_PARTY_NOTICES.md) 與 `distribution-policy.json`。
 
 ## 執行
 
@@ -53,7 +53,7 @@ Native DLL 相容 ABI 中的歷史函式名稱屬二進位介面，不再作為 
 管理／工程／OP 權限與內參／外參分類維持原契約。
 沒有 CUDA DLL、原廠 driver 或取像硬體仍可啟動 CPU 功能。
 設備路徑與硬體設定必須由有權操作的人現場設定，不隨示範 Recipe 預填。
-設備實作的來源權利仍待確認；見 [來源紀錄](docs/source-provenance.md)。
+設備實作參考的既有取像程式已取得權利人同意；見 [來源紀錄](docs/source-provenance.md)。
 
 ## 驗證與打包
 

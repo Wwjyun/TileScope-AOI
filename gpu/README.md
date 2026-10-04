@@ -17,4 +17,4 @@ Native ABI 保留相容 export 名稱；這些名稱不是示範 Recipe ID。
 CPU、fake DLL 和靜態驗證不能取代 nvcc 編譯、GPU runtime、等價與 stress 驗收。
 
 舊量測、現場配置和詳盡歷史報告已另行私有封存。
-目前 source rights 仍待確認，請參閱 `docs/source-provenance.md`。
+職務成果歸屬仍待確認，請參閱 `docs/source-provenance.md`。

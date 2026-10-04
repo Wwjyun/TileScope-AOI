@@ -6,7 +6,7 @@ from enum import Enum
 # ============================================================
 # CCD line-scan camera and LSI-8181 meter wheel value objects.
 # Behaviour reference: third-party C# acquisition program, PROJECT_HANDOFF.md.
-# Source rights remain under review; see docs/source-provenance.md.
+# Used with the original author's permission; see docs/source-provenance.md.
 # ============================================================
 
 EXPOSURE_RANGE = (0.0, 100_000.0)

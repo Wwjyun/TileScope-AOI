@@ -10,12 +10,12 @@
 
 `recipes/` 僅包含示範產品與機台身分。舊 detector 編號、別名和校準設定不作為目前 Recipe 的相容入口。
 
-## 仍待確認的來源
+## 來源與確認狀態
 
 | 範圍 | 已知來源背景 | 狀態 |
 | --- | --- | --- |
-| `devices/sapera_api.py`、`devices/sapera_camera.py`、`devices/lsi8181.py`、`devices/trigger_automation.py`、`devices/ccd_models.py`、`devices/ccd_settings_import.py` | 開發過程參考他人撰寫的既有取像程式；原始來源對照保存在私有封存 | 權利人、允許參考／改寫／散布的範圍尚未確認 |
-| `devices/legacy_*.py`、設備匯入測試與操作文件 | 既有程式的設定與控制流程整理 | 需和原程式權利人及公司確認可對外使用範圍 |
+| `devices/sapera_api.py`、`devices/sapera_camera.py`、`devices/lsi8181.py`、`devices/trigger_automation.py`、`devices/ccd_models.py`、`devices/ccd_settings_import.py` | 開發過程參考他人撰寫的既有取像程式；原始來源對照保存在私有封存 | 已取得權利人同意，使用者可將該程式用於本專案（使用者於 2026-10-04 確認） |
+| `devices/legacy_*.py`、設備匯入測試與操作文件 | 既有程式的設定與控制流程整理 | 同上，已取得原程式權利人同意；涉及公司機台設定的部分仍依職務成果歸屬處理 |
 | AOI engine、detectors、GUI 與 CUDA | 使用者職務涉及 AOI；尚未提供勞動契約或成果歸屬確認 | 職務成果歸屬待確認；不能宣稱全部為獨立個人所有 |
 | 原廠 SDK／driver | 使用者機台安裝的廠商元件 | 不隨程式打包；使用與散布依各廠商契約 |
 
@@ -26,7 +26,7 @@
 程式註解與測試以 `external acquisition reference` 指稱他人撰寫的既有 C# 取像程式。
 本 checkout 未附該 C# 專案；原始名稱、路徑與來源對照保存在私有封存的原始 Git bundle。
 此次只整理名稱與介面說明，沒有重新實作取像層，也沒有將他人程式標為使用者獨立創作。
-取像層的來源與授權待確認狀態維持不變。
+原程式權利人已同意使用者將該程式用於本專案（2026-10-04 由使用者確認）；程式註解保留來源標示，原始 C# 專案仍不放入本 checkout。
 
 ## 發布狀態
 
