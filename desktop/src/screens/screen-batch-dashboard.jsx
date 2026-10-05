@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Btn, Panel, EmptyState, ResultBadge } from "../components/components.jsx";
 import { IcChart, IcStack, IcImage } from "../components/icons.jsx";
-import { TileScatterSVG, tileScatterTiles } from "./screen-batch.jsx";
+import { TileScatterSVG } from "./screen-batch.jsx";
 
 function ResultDistribution({ pass, ng, err }) {
   const items = [
@@ -115,7 +115,7 @@ export default function BatchDashboardScreen({ app }) {
           </Panel>
           <Panel title="所選影像切圖散佈圖">
             {selRow && selRow.result !== "ERROR" ? (
-              <TileScatterSVG tiles={tileScatterTiles(selRow.i ?? sel, selRow.ngTiles)} />
+              <TileScatterSVG grid={selRow.grid} />
             ) : (
               <div style={{ color: "var(--text-3)", fontSize: "var(--fs-small)" }}>
                 {selRow ? "該影像為 ERROR，無切圖結果。" : "請選擇已完成且非 ERROR 的影像。"}

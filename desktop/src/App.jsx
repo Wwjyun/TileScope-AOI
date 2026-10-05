@@ -5,7 +5,7 @@ import {
   isTauri, onCloseRequested, forceClose, errInfo,
 } from "./api/index.js";
 import { MODE_LABELS, MOCK_IMAGES } from "./data/catalog.js";
-import { deriveRuntime, basename, dirname } from "./lib/util.js";
+import { deriveRuntime, basename, dirname, flattenDefects, itemCount, itemTiles, normalizeCatalog } from "./lib/util.js";
 import {
   Btn, Chip, Panel, FormGrid, FRow, TextField, Toggle, Segmented, Badge, Drawer, ProgressBar, NoticeToast, ConfirmDialog,
 } from "./components/components.jsx";
@@ -108,7 +108,7 @@ export default function App() {
   // ---------- startup ----------
   useEffect(() => {
     (async () => {
-      try { const c = await call("detector_catalog", {}); setCatalog(c || {}); } catch (e) { notify({ kind: "error", code: e.code || "INTERNAL", message: e.message || String(e) }); }
+      try { const c = await call("detector_catalog", {}); setCatalog(normalizeCatalog(c)); } catch (e) { notify({ kind: "error", code: e.code || "INTERNAL", message: e.message || String(e) }); }
       try { const s = await call("get_settings", {}); if (s) setSettings((prev) => ({ ...prev, ...s })); } catch (e) { /* non-fatal */ }
       // `runtime_status` first: its response is a valid frame that flips the host
       // state to "ready", so the `sidecar_info` read below is not "starting".
@@ -116,6 +116,22 @@ export default function App() {
       try { const i = await info(); setSidecarInfo(i); } catch (e) { /* non-fatal */ }
     })();
   }, [notify, syncModeFromStatus]);
+
+  // Inner parameters are filtered by the sidecar per permission mode, so the catalog and the loaded
+  // Recipe must be re-read whenever the mode changes (skipped while the Designer has unsaved edits).
+  const recipePathRef = useRef(null);
+  useEffect(() => { recipePathRef.current = recipe && recipe.path; }, [recipe]);
+  const firstModeRef = useRef(true);
+  useEffect(() => {
+    if (firstModeRef.current) { firstModeRef.current = false; return; }
+    call("detector_catalog", {}).then((c) => setCatalog(normalizeCatalog(c))).catch(() => {});
+    const path = recipePathRef.current;
+    if (path && !designerDirtyRef.current) {
+      call("load_recipe", { path })
+        .then((res) => setRecipe({ path: res.path, recipe: res.recipe, hidden_inner_count: res.hidden_inner_count, camera_editable: res.camera_editable }))
+        .catch(() => {});
+    }
+  }, [mode]);
 
   // ---------- event subscriptions ----------
   useEffect(() => {
@@ -188,6 +204,15 @@ export default function App() {
           pushJobEvent("job.cancelled · 資源已釋放");
         }
       }));
+      // Overlay (or the source image) for row thumbnails; its directory must be in the asset scope first.
+      const allowedDirs = new Set();
+      const allowPreview = (it) => {
+        const path = (it.outputs && it.outputs.overlay) || it.image_path || null;
+        if (!path) return null;
+        const dir = dirname(path);
+        if (!allowedDirs.has(dir)) { allowedDirs.add(dir); allowDir(dir).catch(() => {}); }
+        return path;
+      };
       unsubs.push(await on("batch://item", (p) => {
         if (batchIdRef.current && p.job_id === batchIdRef.current) {
           const it = p.item || {};
@@ -195,9 +220,11 @@ export default function App() {
             index: p.index, total: p.total,
             name: it.image_name || `item_${(p.index || 0) + 1}`,
             result: it.final_result || "PASS",
-            defects: (it.summary && it.summary.defect_count) || 0,
-            tiles: (it.summary && it.summary.tile_count) || 0,
-            ngTiles: (it.summary && it.summary.ng_count) || 0,
+            defects: itemCount(it, "defect_count"),
+            tiles: itemCount(it, "tile_count"),
+            ngTiles: itemCount(it, "ng_count"),
+            grid: itemTiles(it),
+            preview: allowPreview(it),
             ms: Math.round((it.duration_sec || 0) * 1000),
             error: it.error || null,
           };
@@ -214,8 +241,10 @@ export default function App() {
               time: nowT(),
               name: it.image_name || `frame_${String(m.items.length + 1).padStart(5, "0")}.png`,
               result: it.final_result || "PASS",
-              defects: (it.summary && it.summary.defect_count) || 0,
-              ngTiles: (it.summary && it.summary.ng_count) || 0,
+              defects: itemCount(it, "defect_count"),
+              ngTiles: itemCount(it, "ng_count"),
+              grid: itemTiles(it),
+              preview: allowPreview(it),
               e2eMs: Math.round((it.duration_sec || 0) * 1000),
               raw_image_path: it.raw_image_path,
               raw_image_error: it.raw_image_error,

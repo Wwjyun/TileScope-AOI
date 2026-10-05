@@ -108,7 +108,7 @@ export function PasswordDialog({ mode, onSubmit, onCancel }) {
         <input ref={ref} type="password" className="field mono-field" value={pw} onChange={(e) => { setPw(e.target.value); setErr(false); }}
           style={err ? { borderColor: "var(--ng)", boxShadow: "0 0 0 2px var(--ng-soft)" } : null} />
         {err && <div style={{ fontSize: "var(--fs-small)", color: "var(--ng)" }}>密碼錯誤，權限未變更。</div>}
-        <div style={{ fontSize: 11, color: "var(--text-3)" }}>驗證由後端執行；工程 1234 · 管理 5678（示範）。</div>
+        <div style={{ fontSize: 11, color: "var(--text-3)" }}>密碼由後端驗證。</div>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
           <Btn variant="ghost" type="button" onClick={onCancel}>取消</Btn>
           <Btn variant="primary" type="submit" disabled={!pw || busy}>{busy ? "驗證中…" : "確認"}</Btn>

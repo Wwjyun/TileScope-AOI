@@ -40,7 +40,9 @@ function DetectorRow({ id, label, def, enabled, expanded, onToggleExpand }) {
 }
 
 function RecipeInfoPanel({ app }) {
-  const { recipe, catalog } = app;
+  const { catalog } = app;
+  // App state holds { path, recipe, ... }; this panel renders the Recipe document itself.
+  const recipe = app.recipe && (app.recipe.recipe || app.recipe);
   const [expandedId, setExpandedId] = useState(null);
   if (!recipe) {
     return (

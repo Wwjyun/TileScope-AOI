@@ -94,7 +94,7 @@ export function RuntimeDrawer({ rt, mode, restarting, onRestart, onOpenLog, onCl
               <span>CUDA DLL</span><span>{rt.dll === "present" ? "已找到" : rt.dll === "missing" ? "未找到" : "—"}{(rt.cuda && rt.cuda.dll_path) ? `（${rt.cuda.dll_path}）` : ""}</span>
               <span>Recipe GPU 模式</span><span>{recipeGpuText}</span>
               <span>影像傳輸</span><span>共享暫存檔 + asset://</span>
-              <span>工作佇列上限</span><span>4</span>
+              <span>同時執行工作</span><span>1</span>
             </div>
           </div>
         )}

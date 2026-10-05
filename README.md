@@ -13,6 +13,20 @@
 - **權限**：OP／工程／管理三種模式；參數依 `outer`／`inner` 分組，非管理模式不會收到內層參數值，工程模式儲存時保留隱藏值。
 - **設備（選用）**：線掃 CCD 相機（Sapera LT）、LSI-8181 米輪、PCIe-1730 Sensor 中繼、RS-232 光源；缺 SDK 或硬體時程式照常啟動並顯示原因與錯誤碼（[錯誤碼](docs/device-error-codes.md)）。
 
+## 畫面
+
+以下截圖皆為桌面版搭配真實 sidecar 的實際檢測結果（合成影像、DEMO3 Recipe、CPU）。
+
+| 單張檢測 | 檢測結果 |
+| --- | --- |
+| ![單張檢測](docs/images/desktop_03_run_result.png) | ![檢測結果](docs/images/desktop_04_results.png) |
+| **批次檢測** | **資料夾監控** |
+| ![批次檢測](docs/images/desktop_06_batch.png) | ![資料夾監控](docs/images/desktop_08_monitor.png) |
+
+Recipe 設計（管理模式可見內層參數；工程模式只看到外層參數）：
+
+![Recipe 設計](docs/images/desktop_10_designer_admin.png)
+
 ## 架構
 
 ```
@@ -77,6 +91,7 @@ cd desktop; npm ci; npm run tauri dev
 ```powershell
 .\env\Scripts\python.exe -m unittest discover -s tests
 .\env\Scripts\python.exe -m aoi_sidecar --smoke-test
+cd desktop; npm run lint
 cd desktop\src-tauri; cargo test; cargo clippy
 
 # 桌面版安裝檔（凍結 sidecar → smoke test → NSIS，含 WebView2 離線安裝）

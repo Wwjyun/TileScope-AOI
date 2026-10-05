@@ -139,3 +139,45 @@ export function backendLabel(rt) {
   if (rt.backend === "cpu") return rt.tone === "warn" ? "CPU fallback" : "CPU";
   return "—";
 }
+
+// Per-image counts from a batch/monitor item (sidecar sends them top-level; older shapes nest them in `summary`).
+export function itemCount(item, key) {
+  if (!item) return 0;
+  const v = item[key] ?? (item.summary && item.summary[key]);
+  return Number.isFinite(Number(v)) ? Number(v) : 0;
+}
+
+// Real tile grid from an item's compact `detail.tiles` (row/col/result); empty when the sidecar sent none.
+export function itemTiles(item) {
+  const tiles = (item && item.detail && item.detail.tiles) || [];
+  const cells = tiles
+    .map((t) => ({ c: Number(t.tile && t.tile.col), r: Number(t.tile && t.tile.row), ng: t.result === "NG", id: t.tile && t.tile.tile_id }))
+    .filter((t) => Number.isFinite(t.c) && Number.isFinite(t.r));
+  const cols = cells.reduce((m, t) => Math.max(m, t.c + 1), 0);
+  const rows = cells.reduce((m, t) => Math.max(m, t.r + 1), 0);
+  return { cells, cols, rows };
+}
+
+// `detector_catalog` arrives from the sidecar as [{id, label, supports_cuda, params:[{name, type, group, ...}]}];
+// screens use id → {tag, gpu, param_spec{name → spec}}. Objects already in that shape (the mock) pass through.
+// Parameters without an explicit `outer` group stay `inner` (fail-closed).
+export function normalizeCatalog(raw) {
+  if (!raw) return {};
+  if (!Array.isArray(raw)) return raw;
+  const out = {};
+  for (const d of raw) {
+    const param_spec = {};
+    const default_params = {};
+    for (const p of d.params || []) {
+      const group = p.group === "outer" ? "outer" : "inner";
+      param_spec[p.name] = {
+        value_type: p.type, default: p.default, minimum: p.min ?? null, maximum: p.max ?? null,
+        choices: p.choices || [], parameter_group: group, engineer_visible: group === "outer",
+        label: p.label || "", hidden: !!p.hidden,
+      };
+      if (!p.hidden) default_params[p.name] = p.default;
+    }
+    out[d.id] = { display_name: d.label || d.id, detector_name: d.id, gpu: !!d.supports_cuda, tag: d.label || d.id, default_params, param_spec };
+  }
+  return out;
+}

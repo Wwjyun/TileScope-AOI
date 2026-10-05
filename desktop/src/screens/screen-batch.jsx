@@ -5,6 +5,7 @@ import {
   IcFolder, IcRecipe, IcPlay, IcStop, IcRadar, IcImage, IcCheck, IcLock, IcAlert,
 } from "../components/icons.jsx";
 import { backendLabel } from "../lib/util.js";
+import { fileUrl } from "../api/index.js";
 
 export function SmallStat({ label, value, tone }) {
   return (
@@ -15,28 +16,18 @@ export function SmallStat({ label, value, tone }) {
   );
 }
 
-function Thumb({ app, name, size = 220 }) {
-  const src = app.imageSrcFor && app.imageSrcFor(name);
+function Thumb({ row }) {
+  const src = row && row.preview ? fileUrl(row.preview) : null;
   if (!src) {
     return <div style={{ width: "100%", aspectRatio: "4/3", borderRadius: "var(--r-md)", border: "1px solid var(--border)", background: "var(--viewer-bg)", display: "grid", placeItems: "center", color: "rgba(255,255,255,0.3)", fontSize: 11 }}>無縮圖</div>;
   }
-  return <img src={src} alt={name} style={{ width: "100%", display: "block", borderRadius: "var(--r-md)", border: "1px solid var(--border)", background: "var(--viewer-bg)" }} />;
+  return <img src={src} alt={row.name} style={{ width: "100%", display: "block", borderRadius: "var(--r-md)", border: "1px solid var(--border)", background: "var(--viewer-bg)" }} />;
 }
 
-// 依序號決定性產生 tile 散佈資料（切圖 x/y 以格點表示）
-export function tileScatterTiles(seedIdx, ngTiles, cols = 16, rows = 12) {
-  const total = cols * rows;
-  let seed = seedIdx * 7919 + 17;
-  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-  const target = Math.min(Math.max(ngTiles || 0, 0), total);
-  const ngSet = new Set();
-  while (ngSet.size < target) ngSet.add(Math.floor(rnd() * total));
-  const tiles = [];
-  for (let t = 0; t < total; t++) tiles.push({ c: t % cols, r: Math.floor(t / cols), ng: ngSet.has(t) });
-  return tiles;
-}
-
-export function TileScatterSVG({ tiles, cols = 16, rows = 12, height = 220 }) {
+export function TileScatterSVG({ grid, height = 220 }) {
+  const tiles = (grid && grid.cells) || [];
+  if (!tiles.length) return <div style={{ fontSize: "var(--fs-small)", color: "var(--text-3)", padding: "8px 0" }}>此影像沒有切圖資料。</div>;
+  const cols = Math.max(grid.cols, 1), rows = Math.max(grid.rows, 1);
   const cw = 100 / cols, ch = 100 / rows;
   const ng = tiles.filter((t) => t.ng).length;
   const pass = tiles.length - ng;
@@ -108,7 +99,7 @@ export function BatchScreen({ app }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%", minHeight: 0 }}>
       <div className="panel" style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: "10px var(--pad-panel)", flexWrap: "wrap" }}>
         <Chip icon={<IcFolder size={14} />} label="來源" empty={!b.input_dir} value={b.input_dir || "點擊選擇資料夾"} onClick={() => !b.running && app.pickBatchFolder()} />
-        <Chip icon={<IcRecipe size={14} />} label="Recipe" empty={!app.recipe} value={app.recipe ? app.recipe.recipe_name : "點擊載入"} onClick={() => !b.running && app.openRecipePicker()} />
+        <Chip icon={<IcRecipe size={14} />} label="Recipe" empty={!app.recipe} value={app.recipe ? (app.recipe.recipe || app.recipe).recipe_name : "點擊載入"} onClick={() => !b.running && app.openRecipePicker()} />
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "var(--fs-small)", color: "var(--text-2)" }}>
           包含子資料夾 <Toggle value={b.recursive} onChange={app.setBatchRecursive} disabled={b.running || done.length > 0} />
         </label>
@@ -167,7 +158,7 @@ export function BatchScreen({ app }) {
         <Panel title="影像詳情" style={{ flex: 1, minWidth: 240 }}>
           {selRow ? (
             <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <Thumb app={app} name={selRow.name} />
+              <Thumb row={selRow} />
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span className="mono" style={{ fontWeight: 600 }}>{selRow.name}</span><ResultBadge result={selRow.result} /></div>
               <div className="kv">
                 <span>Tiles</span><span>{selRow.tiles}</span>
@@ -237,7 +228,7 @@ export function MonitorScreen({ app }) {
                     <Btn variant="secondary" size="sm" style={{ height: "var(--row-h)" }} icon={<IcFolder size={13} />} onClick={() => !running && app.pickMonitorFolder()}>選擇</Btn>
                   </div>
                 </FRow>
-                <FRow label="Recipe"><TextField mono value={app.recipe ? app.recipe.recipe_name : "—"} readOnly /></FRow>
+                <FRow label="Recipe"><TextField mono value={app.recipe ? (app.recipe.recipe || app.recipe).recipe_name : "—"} readOnly /></FRow>
                 <FRow label="處理後搬移"><Toggle value={moveAfter} onChange={setMoveAfter} disabled={running || isOp} /></FRow>
                 {moveAfter && <FRow label="搬移至"><TextField mono value={moveTo} onChange={(e) => setMoveTo(e.target.value)} placeholder="處理後搬移至…" /></FRow>}
               </FormGrid>
@@ -269,7 +260,7 @@ export function MonitorScreen({ app }) {
         <Panel title="最新影像" actions={running && <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--accent-text)" }}><span className="dot busy" style={{ width: 6, height: 6 }}></span>LIVE</span>}>
           {latest ? (
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
-              <Thumb app={app} name={latest.name} />
+              <Thumb row={latest} />
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <span style={{ fontSize: 40, fontWeight: 800, fontFamily: "var(--font-mono)", color: latest.result === "NG" ? "var(--ng)" : latest.result === "ERROR" ? "var(--warn)" : "var(--pass)" }}>{latest.result}</span>
                 <div className="kv">
@@ -311,7 +302,7 @@ export function MonitorScreen({ app }) {
             </Panel>
             <Panel title="所選影像切圖散佈圖">
               {selRow && selRow.result !== "ERROR" ? (
-                <TileScatterSVG tiles={tileScatterTiles(selRow.n, selRow.ngTiles)} />
+                <TileScatterSVG grid={selRow.grid} />
               ) : (
                 <div style={{ color: "var(--text-3)", fontSize: "var(--fs-small)" }}>
                   {selRow ? "該影像為 ERROR，無切圖結果。" : "請在左側選擇一筆已完成的影像。"}

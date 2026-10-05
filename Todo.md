@@ -47,6 +47,12 @@
 
 ## 完成紀錄
 
+### 2026-10-05 — 桌面版 UI 實測修正與截圖
+
+- 以真實 sidecar 逐頁操作桌面版時發現並修正：單張檢測完成時 `flattenDefects` 未匯入導致結果不顯示；執行頁與批次頁把 Recipe 外層包裝當成 Recipe 本體；批次／監控項目的缺陷數、NG tiles 與 tile 數讀錯欄位；批次儀表板與監控的切圖散佈圖改用 `detail.tiles` 真實資料（原為原型的決定性假資料）；縮圖改用 sidecar 輸出的 overlay；Recipe 設計的 detector catalog 由 sidecar 陣列格式正規化，切換權限後重新讀取 catalog 與 Recipe，工程模式顯示隱藏內層參數數量；執行環境抽屜改為如實顯示「同時執行工作 1」；密碼對話框不再顯示示範密碼。
+- 新增 `npm run lint`（ESLint `no-undef`／`react/jsx-no-undef`），並納入 `build_desktop.ps1`；已確認可抓到上述未匯入錯誤。
+- README 新增實際檢測截圖（`docs/images/`）。
+
 ### 2026-10-05 — TileScope AOI 桌面版 v0.1.0、改名與協作設定
 
 - 新增不依賴 Qt 的 Python sidecar（stdio JSON-RPC 協定 v1）：單一工作排程、取消後才回報、權限過濾（未分類參數預設隱藏、工程模式保留內層值與 camera 區段）、預覽、設定與設備可用性探測，以及 `--smoke-test`（CPU 等價、缺 DLL 零 GPU 呼叫回退、嚴格 CUDA 報錯、不載入 Qt）。

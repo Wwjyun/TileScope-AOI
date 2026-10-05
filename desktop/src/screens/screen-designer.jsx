@@ -315,6 +315,8 @@ export default function DesignerScreen({ app }) {
                 const entries = Object.keys(params).map((k) => [k, specs[k] || { parameter_group: "inner" }]);
                 const outerE = entries.filter(([, s]) => s.parameter_group === "outer");
                 const innerE = entries.filter(([, s]) => s.parameter_group === "inner");
+                // The sidecar strips inner values for non-admin modes, so count them from the catalog spec.
+                const hiddenForDetector = Object.values(specs).filter((sp) => sp.parameter_group !== "outer").length;
                 const head = (t) => <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", margin: "4px 0 8px" }}>{t}</div>;
                 return (
                   <div key={id} style={{ marginBottom: 20 }}>
@@ -332,9 +334,9 @@ export default function DesignerScreen({ app }) {
                       {isAdmin && innerE.length > 0 && (
                         <div style={{ marginTop: 16 }}>{head("內層參數 · 管理")}<FormGrid>{renderParamRows(id, innerE)}</FormGrid></div>
                       )}
-                      {!isAdmin && innerE.length > 0 && (
+                      {!isAdmin && (innerE.length > 0 || hiddenForDetector > 0) && (
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 14, fontSize: "var(--fs-small)", color: "var(--text-3)" }}>
-                          <IcLock size={12} /> 另有 {hiddenInnerCount || innerE.length} 個內層參數，僅管理模式可見。
+                          <IcLock size={12} /> 另有 {hiddenForDetector || innerE.length} 個內層參數，僅管理模式可見。
                         </div>
                       )}
                     </div>

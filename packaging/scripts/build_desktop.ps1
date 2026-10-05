@@ -177,6 +177,10 @@ try {
         bundle = @{ windows = @{ webviewInstallMode = @{ type = $WebView2Mode } } }
     } | ConvertTo-Json -Depth 5
     [System.IO.File]::WriteAllText($configOverride, $configJson)
+    Write-Host "Linting desktop frontend (npm run lint)..."
+    & npm run lint
+    if ($LASTEXITCODE -ne 0) { throw "Frontend lint failed with exit code $LASTEXITCODE" }
+
     Write-Host "Building desktop installer (npx tauri build)..."
     & npx tauri build --config $configOverride
     if ($LASTEXITCODE -ne 0) { throw "tauri build failed with exit code $LASTEXITCODE" }

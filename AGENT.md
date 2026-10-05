@@ -207,7 +207,7 @@ $env:QT_QPA_PLATFORM='offscreen'
 
 For sidecar changes, also run `.\env\Scripts\python.exe -m aoi_sidecar --smoke-test`.
 
-For desktop changes, run `cargo test` and `cargo clippy` in `desktop\src-tauri` and build the frontend with `npm run build`. Vite/rollup crashes when the project path contains non-ASCII characters, so build from an ASCII copy of `desktop\` in that case. For behavior changes, run the real app with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=<port>` and verify through CDP: OP default mode, backend label, an end-to-end CPU job, and no orphan sidecar after closing.
+For desktop changes, run `cargo test` and `cargo clippy` in `desktop\src-tauri`, `npm run lint` (catches undefined identifiers that `vite build` does not) and build the frontend with `npm run build`. Vite/rollup crashes when the project path contains non-ASCII characters, so build from an ASCII copy of `desktop\` in that case. For behavior changes, run the real app with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=<port>` and verify through CDP: OP default mode, backend label, an end-to-end CPU job, and no orphan sidecar after closing.
 
 For desktop installer changes, run `packaging\scriptsuild_desktop.ps1`; it must pass the frozen sidecar `--smoke-test` and the stdio protocol check.
 
