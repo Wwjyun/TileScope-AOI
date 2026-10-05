@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 
-from core.access_control import MODE_LABELS, PermissionManager
+from core.access_control import MODE_LABELS, PermissionManager, load_mode_passwords
 from core.backend_comparison import BackendComparison, actual_gpu_backend
 from core.batch_processor import BatchInspectionProcessor
 from core.csv_summary import CsvSummaryExporter
@@ -40,19 +39,6 @@ def _require(params: dict, *names: str) -> None:
             raise JsonRpcError(INVALID_PARAMS, f"缺少必要參數：{name}")
 
 
-def _load_passwords() -> dict[str, str] | None:
-    path = os.environ.get("AOI_SIDECAR_PASSWORDS_FILE")
-    if not path:
-        return None
-    try:
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
-    except (OSError, ValueError, json.JSONDecodeError):
-        return None
-    if not isinstance(data, dict):
-        return None
-    return {str(key): str(value) for key, value in data.items()}
-
-
 def _existing_outputs(outputs: dict) -> dict:
     existing = {}
     for key in ("overlay", "csv", "json", "matrix_csv", "ng_tiles_dir"):
@@ -65,7 +51,7 @@ def _existing_outputs(outputs: dict) -> dict:
 class SidecarService:
     def __init__(self, emit):
         self._emit = emit
-        self.permission_manager = PermissionManager(_load_passwords())
+        self.permission_manager = PermissionManager(load_mode_passwords())
         self.recipe_manager = RecipeManager()
         self.jobs = JobRunner(emit)
         self.gpu_session_cache = GpuExecutionSessionCache(workload="throughput")

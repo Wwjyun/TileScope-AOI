@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   cuda-runtime:
-    if: github.repository == 'Wwjyun/TileScope-AOI' || github.repository == 'wjcudalearning/VisionFlow'
+    if: github.repository == 'Wwjyun/TileScope-AOI'
     runs-on: [self-hosted, Windows, X64, gpu, rtx3090]
     timeout-minutes: 120
     env:

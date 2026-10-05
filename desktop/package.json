@@ -1,6 +1,7 @@
 {
   "name": "tilescope-aoi-desktop",
   "private": true,
+  "license": "PolyForm-Noncommercial-1.0.0",
   "version": "0.1.0",
   "type": "module",
   "description": "TileScope AOI Desktop — Tauri 2 shell (Rust host + React frontend) for the Python sidecar GUI",

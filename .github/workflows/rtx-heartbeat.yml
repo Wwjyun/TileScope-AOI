@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   verify-recent-success:
-    if: github.repository == 'Wwjyun/TileScope-AOI' || github.repository == 'wjcudalearning/VisionFlow'
+    if: github.repository == 'Wwjyun/TileScope-AOI'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

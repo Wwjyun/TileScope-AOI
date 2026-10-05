@@ -1,0 +1,4 @@
+interface:
+  display_name: "AOI Release"
+  short_description: "Package the TileScope AOI desktop installer, verify, tag, and publish safely."
+  default_prompt: "Use $aoi-release to package the TileScope AOI desktop installer and publish a validated release."

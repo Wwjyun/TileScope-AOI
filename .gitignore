@@ -41,11 +41,7 @@ node_modules/
 htmlcov/
 .claude/scheduled_tasks.lock
 
-# Personal documents must never enter this public repository.
-# The resume carries a phone number and email address; keep it gitignored even
-# though it lives outside the tracked tree, as a guard against `git add .`.
-Wang_WeiJyun_*.html
-Wang_WeiJyun_*.pdf
+# Personal documents never belong in this repository.
 *Resume*.html
 *Resume*.pdf
 *履歷*.pdf
@@ -55,12 +51,10 @@ Wang_WeiJyun_*.pdf
 .hypothesis/
 tmp_*.txt
 
-# Local assistant configuration and private artifact inventories are not demo source.
-/.claude/
-/codex-skills/
-/.mcp.json
-/CLAUDE.md
-/HERMES.md
+# AI-collaboration configuration (skills, agents, MCP, CLAUDE.md, HERMES.md) is versioned;
+# only machine-local assistant state and the personal artifact inventory stay out.
+/.claude/settings.local.json
+/.claude/scheduled_tasks.lock
 /ARTIFACTS.md
 
 # Tauri desktop shell (desktop/)

@@ -1,0 +1,4 @@
+interface:
+  display_name: "AOI Desktop Development"
+  short_description: "Develop the Tauri desktop, React frontend, and Python sidecar."
+  default_prompt: "Use $aoi-desktop-development to implement a desktop or sidecar change safely."

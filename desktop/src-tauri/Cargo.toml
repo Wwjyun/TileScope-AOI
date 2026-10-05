@@ -2,7 +2,8 @@
 name = "tilescope-aoi-desktop"
 version = "0.1.0"
 description = "TileScope AOI Desktop — Tauri 2 host for the Python sidecar GUI"
-authors = ["TileScope AOI"]
+authors = ["Wei-Jyun Wang"]
+license = "PolyForm-Noncommercial-1.0.0"
 edition = "2021"
 
 [lib]

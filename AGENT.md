@@ -1,10 +1,10 @@
 # Repository Agent Instructions
 
-These rules apply to all future Codex work in this repository.
+These rules apply to every AI agent working in this repository (Codex, Claude Code, DeepSeek workers, subagents) and to human contributors.
 
 ## Project and environment
 
-TileScope AOI is a private synthetic demonstration of a recipe-driven OpenCV inspection system with a PySide6 GUI and an optional CUDA DLL backend.
+TileScope AOI is a private synthetic demonstration of a recipe-driven OpenCV inspection system. The primary GUI is a Tauri 2 desktop app (`desktop/`: Rust host + React frontend) that drives a Qt-free Python sidecar (`aoi_sidecar/`); the PySide6 GUI is kept as **TileScope AOI Classic** during the migration. CUDA is an optional DLL backend.
 
 ## Source and distribution boundary
 
@@ -14,13 +14,16 @@ TileScope AOI is a private synthetic demonstration of a recipe-driven OpenCV ins
 - Do not copy calibration, images, parameters, logs or legacy acquisition source from a company.
 - Preserve source provenance honestly in docs/source-provenance.md. Renaming never establishes ownership.
 - Private source snapshots may isolate history but are not cleared for redistribution.
-- Do not rewrite remote history, delete remote tags, rename the repository or start a Rust GUI migration without the corresponding user instruction.
+- Do not rewrite remote history, delete remote tags or rename the repository without the corresponding user instruction.
 
 
 Primary entry points:
 
 - CLI: `python main.py --image <image> --recipe <recipe.yaml> --output <directory>`
-- GUI: `python main.py --gui`
+- Desktop GUI (dev): `cd desktop; npm run tauri dev` (the host starts `env\Scripts\python.exe -m aoi_sidecar`; override with `AOI_REPO_ROOT` or `AOI_SIDECAR_EXE`)
+- Sidecar: `python -m aoi_sidecar` (stdio protocol) and `python -m aoi_sidecar --smoke-test`
+- Desktop installer: `packaging/scripts/build_desktop.ps1 -Version x.y.z` (frozen sidecar via `packaging/specs/aoi-sidecar.spec`, NSIS output `dist\desktop\TileScope-AOI-<version>-setup.exe`)
+- Classic GUI: `python main.py --gui`
 - Packaged GUI entry/smoke: `gui_launcher.py` and `TileScope AOI Classic.exe --smoke-test`
 - Windows package build: `packaging/scripts/build_exe.ps1` using the tracked `packaging/specs/TileScope AOI Classic.spec`
 - Traditional-CV tuning reference: `contour_preprocess_tool/` (run with `python -m contour_preprocess_tool`; build the independent EXE with `packaging/scripts/build_contour_preprocess_tool.ps1`)
@@ -55,7 +58,9 @@ The normal development machine may not have `nvcc`, CMake, or an NVIDIA GPU. Nev
 - `detectors/`: detector-specific feature extraction, geometry, filtering, and result metadata.
 - `gpu/`: CUDA C ABI, kernels, persistent contexts, build scripts, native smoke tests, and CPU/GPU validation.
 - `devices/`: optional acquisition hardware (CCD line-scan camera, LSI-8181 meter wheel, PCIe-1730 Sensor relay I/O, RS-232 light controller): backend-neutral interfaces, typed settings, simulators, vendor bindings, machine-level settings store, and frame writing. No Qt imports.
-- `gui/`: PySide6 screens, widgets, workers, status, and preview behavior; `gui/ccd_controller.py` owns the long-lived CCD sessions.
+- `aoi_sidecar/`: Qt-free stdio JSON-RPC service for the desktop GUI — protocol framing, method dispatch, the single job runner, recipe load/save filtering by parameter group, previews, settings, device availability probes, and `--smoke-test`. It reuses `core/`, `detectors/` and `devices/`; it never duplicates pipeline or fallback policy and never imports Qt.
+- `desktop/`: Tauri 2 desktop app. `src-tauri/` owns sidecar lifecycle (launch resolution, reader thread, pending-call routing, restart generation, shutdown) and exposes only generic commands; `src/` owns screens, the `api/` layer and the browser-mode mock. No inspection logic in Rust or JavaScript.
+- `gui/`: TileScope AOI Classic (PySide6) screens, widgets, workers, status, and preview behavior; `gui/ccd_controller.py` owns the long-lived CCD sessions until device control moves to the sidecar.
 - `recipes/`: YAML synthetic demonstration configurations.
 - `tests/`: automated correctness, fallback, routing, and regression tests.
 - `.github/workflows/`: CI only; keep GPU runtime jobs isolated from ordinary hosted runners.
@@ -63,7 +68,7 @@ The normal development machine may not have `nvcc`, CMake, or an NVIDIA GPU. Nev
 - `weekly_reports/`: Thursday-to-Wednesday progress reports; keep this directory separate because the weekly-report workflow depends on its stable path.
 - `release_artifacts/`: local versioned release ZIPs; keep the directory index tracked but never commit the ZIP contents.
 - `cuda_practice/`: independent learning/device-check programs; do not make production runtime depend on them.
-- `design_handoff_aoi_gui/`: design reference only; production UI behavior belongs in `gui/`.
+- `design_handoff_aoi_gui/`: v2 design prototype and handoff spec only; production UI behavior belongs in `desktop/` (and `gui/` for Classic).
 
 Put behavior in the narrowest appropriate module. Do not duplicate pipeline or fallback policy inside individual detectors.
 
@@ -100,7 +105,19 @@ Put behavior in the narrowest appropriate module. Do not duplicate pipeline or f
 - Avoid module globals that hold mutable detector, recipe, image, or GPU state.
 - Inject runtime/backend dependencies where tests need CPU, fake DLL, legacy DLL, or failing GPU behavior.
 
+## Desktop and sidecar contract
+
+- Protocol v1: UTF-8 NDJSON JSON-RPC 2.0 over the sidecar's stdin/stdout. stdout carries protocol frames only (stray prints go to stderr); errors carry a stable `data.code`; events are `event` notifications with a `topic`. A protocol change updates the sidecar, the Rust host, the frontend `api/` layer, the mock and their tests in the same change.
+- Never send pixels through JSON. The sidecar writes previews, overlays and thumbnails to files; the host allows only those directories in the asset-protocol scope and the frontend loads them with `convertFileSrc`.
+- One job at a time on the single serialized GPU path; a second start returns `BUSY`. Cancellation is cooperative and `job://cancelled` is emitted only after the worker thread has finished and released resources. Monitor failures emit `job://failed` before `monitor://stopped`.
+- Permission mode lives in the sidecar. The frontend mirrors it (default `op`), changes it only after a successful `switch_mode`, and resets after a sidecar restart. Inner and unclassified parameter values are never sent to `op`/`eng`, and engineer saves restore hidden inner values and the `camera` section from the base recipe. Frontend hiding is UX only.
+- The backend label comes only from job results or `job://failed` codes, never from the recipe request or the permission mode. Show a neutral "not run yet" state until a result exists.
+- Host commands that wait on the sidecar are async and never block the main thread. A restarted sidecar must not be clobbered by the previous child's reader. Closing the app leaves no orphan sidecar process.
+- The desktop GUI must start and remain usable without the CUDA DLL, vendor SDKs or hardware; device availability and reasons come from `runtime_status`. Desktop device control and camera-direct monitoring are a later phase; until then Classic owns them.
+
 ## GUI interaction contract
+
+These rules apply to the desktop GUI and Classic; Qt-specific mechanics apply to Classic only.
 
 - Preserve the existing visual language and status hierarchy: TopBar owns global progress and actual backend, operation panels own step detail, and the status bar contains only short events.
 - Backend labels must come from runtime result metadata. Never infer CUDA active from a recipe request; expose CPU fallback reasons in text or a tooltip.
@@ -170,11 +187,11 @@ While editing:
 4. Keep generated files under ignored validation/output directories.
 5. Keep `README.md` user-facing and evidence-based; keep this file focused on contributor/agent invariants. Update both when commands, architecture, packaging, or validation policy changes.
 
-Before finishing, always run:
+Before finishing, always run (set `TEMP`/`TMP` to an ASCII directory first: OpenCV cannot write to a non-ASCII temp path):
 
 ```powershell
 .\env\Scripts\python.exe -m unittest discover -s tests -v
-.\env\Scripts\python.exe -m compileall main.py gui_launcher.py tools contour_preprocess_tool core detectors devices gui gpu
+.\env\Scripts\python.exe -m compileall main.py gui_launcher.py tools contour_preprocess_tool core detectors devices gui gpu aoi_sidecar
 .\env\Scripts\python.exe gpu\preflight_cuda_build.py
 git diff --check
 ```
@@ -188,7 +205,13 @@ $env:QT_QPA_PLATFORM='offscreen'
 .\env\Scripts\python.exe -c "from pathlib import Path; from PySide6.QtWidgets import QApplication; from gui.main_window import MainWindow; app=QApplication([]); w=MainWindow(); w.recipe_panel.load_recipe(Path('recipes/DEMO.yaml')); print(w.windowTitle(), w.recipe_panel.detector_list.count())"
 ```
 
-For packaging, `gui_launcher.py`, or spec changes, build through `packaging\scripts\build_exe.ps1` and run the packaged `--smoke-test` when the local environment can support a package build. The smoke must cover bundled recipe/MainWindow startup, CPU-only execution, missing-DLL fallback equivalence with zero GPU calls, and explicit strict-CUDA failure.
+For sidecar changes, also run `.\env\Scripts\python.exe -m aoi_sidecar --smoke-test`.
+
+For desktop changes, run `cargo test` and `cargo clippy` in `desktop\src-tauri` and build the frontend with `npm run build`. Vite/rollup crashes when the project path contains non-ASCII characters, so build from an ASCII copy of `desktop\` in that case. For behavior changes, run the real app with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=<port>` and verify through CDP: OP default mode, backend label, an end-to-end CPU job, and no orphan sidecar after closing.
+
+For desktop installer changes, run `packaging\scriptsuild_desktop.ps1`; it must pass the frozen sidecar `--smoke-test` and the stdio protocol check.
+
+For Classic packaging, `gui_launcher.py`, or Classic spec changes, build through `packaging\scripts\build_exe.ps1` and run the packaged `--smoke-test` when the local environment can support a package build. The smoke must cover bundled recipe/MainWindow startup, CPU-only execution, missing-DLL fallback equivalence with zero GPU calls, and explicit strict-CUDA failure.
 
 For standalone utility or utility spec/build changes, use the matching dedicated build script and run that utility's packaged `--smoke-test`. Keep utility bundle tags (`utility-tools-vX.Y.Z`) and the legacy NG Tile tool tag namespace separate from TileScope AOI application tags (`vX.Y.Z`).
 

@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QApplication,
 )
 
+from core.access_control import load_mode_passwords
 from core.camera_monitor_processor import CameraFrameQueue
 from core.env_names import env_value
 from core.logging_system import LogMixin, configure_logging
@@ -187,7 +188,7 @@ class MainWindow(QMainWindow, LogMixin):
             if configured_yolox_directory
             else None
         )
-        self.permission_manager = permission_manager or PermissionManager()
+        self.permission_manager = permission_manager or PermissionManager(load_mode_passwords())
         self.password_prompt = password_prompt or ModePasswordPrompt()
         self.permission_manager.switch_mode("op")
         self.mode = self.permission_manager.current_mode
