@@ -224,7 +224,9 @@ $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
 $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
 $process = [System.Diagnostics.Process]::Start($psi)
 try {
-    $stdin = $process.StandardInput
+    # Write UTF-8 without a BOM: the default stdin encoder follows the console and may prepend one.
+    $stdin = New-Object System.IO.StreamWriter($process.StandardInput.BaseStream, (New-Object System.Text.UTF8Encoding($false)))
+    $stdin.AutoFlush = $true
     $stdout = $process.StandardOutput
     $stdin.WriteLine('{"jsonrpc":"2.0","id":1,"method":"hello","params":{}}')
     $stdin.WriteLine('{"jsonrpc":"2.0","id":2,"method":"runtime_status","params":{}}')
@@ -232,8 +234,8 @@ try {
 
     $hello = $null
     $status = $null
-    # One startup event, then the hello and runtime_status responses.
-    for ($i = 0; $i -lt 3; $i++) {
+    # Events may arrive in any number; read until both responses are seen.
+    for ($i = 0; ($i -lt 20) -and (($null -eq $hello) -or ($null -eq $status)); $i++) {
         $line = Read-SidecarLine -Reader $stdout
         if ($null -eq $line) { throw "Sidecar closed stdout before answering" }
         $obj = $line | ConvertFrom-Json

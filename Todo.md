@@ -20,20 +20,21 @@
 
 ## Rust 前端重構評估與遷移
 
-本階段先評估並與使用者確認方案；目前只新增規劃，尚未選定框架或開始重寫。先以沿用 Python 檢測核心及既有 CUDA ABI 為評估基準。
+已選定 Tauri 2（React 前端 + Rust 宿主）驅動不依賴 Qt 的 Python sidecar（`aoi_sidecar/`，stdio JSON-RPC 協定 v1），沿用 Python 檢測核心與 CUDA ABI v1。桌面版 v0.1.0 已可封裝為 NSIS 安裝檔；PySide6 GUI 以 TileScope AOI Classic 保留至設備整合與驗收完成。
 
-新 GUI 設計原型：[`design_handoff_aoi_gui/`](design_handoff_aoi_gui/README.md)（v2，網頁 GUI → Tauri 2／Rust → Python sidecar）。原型提出 Tauri 2、stdio JSON-RPC sidecar、影像以暫存檔路徑傳遞及 IPC 契約，作為以下評估的候選方案，尚待原型驗證與使用者確認；功能以現行 PySide6 GUI 為基準，README 的「功能對等清單」對照現行功能與原型位置。
+新 GUI 設計原型：[`design_handoff_aoi_gui/`](design_handoff_aoi_gui/README.md)（v2，網頁 GUI → Tauri 2／Rust → Python sidecar）。原型的 Tauri 2、stdio JSON-RPC sidecar 與影像以檔案路徑傳遞的方案已實作；功能以現行 PySide6 GUI 為基準，README 的「功能對等清單」對照現行功能與原型位置。
 
 - [x] 依 `design_handoff_aoi_gui/README.md` 的功能對等清單補齊原型：GPU 預熱、CPU／GPU 對照、批量數據圖表、相機直連監控與原圖保存、結果效能分析與 NG 切換、Recipe 精度與相機 CCD 區段、米輪／Sensor 中繼／存圖／觸發與 Sapera 診斷、`[E-xxxx]` 錯誤碼及其餘輸出選項。
-- [ ] 盤點現有檢測、結果、Recipe Designer、批次、監控與 CCD 頁面的操作流程，確認第一階段範圍及 OP／工程師權限。
-- [ ] 評估 Tauri 2 作為桌面容器與封裝方案：網頁 GUI 加 Rust 宿主；若需求是畫面也由 Rust 實作，再比較 egui／eframe、Slint 等原生 GUI 方案。確認 Windows、繁體中文、高 DPI、離線部署與相依授權條件。
-- [ ] 評估「網頁 GUI → Tauri／Rust → Python sidecar → CUDA／設備」的串接方式；比較子程序 IPC 與直接呼叫方案，定義 Recipe、工作 ID、進度、結果、取消、錯誤及實際 backend 的介面。
-- [ ] 梳理 `CcdController`、GUI workers 與 workflow controllers 的 Qt 相依；把可共用的檢測／設備流程整理成不依賴 Qt 的介面，保留連線、關閉、取消與資源釋放順序。
+- [x] 盤點現有檢測、結果、Recipe Designer、批次、監控與 CCD 頁面的操作流程，確認第一階段範圍及 OP／工程師權限：見原型 README 功能對等清單；第一階段不含設備控制與相機直連監控。
+- [x] 評估 Tauri 2 作為桌面容器與封裝方案（已採用；繁體中文、離線 WebView2 已驗證，高 DPI 待實機確認）：網頁 GUI 加 Rust 宿主；若需求是畫面也由 Rust 實作，再比較 egui／eframe、Slint 等原生 GUI 方案。確認 Windows、繁體中文、高 DPI、離線部署與相依授權條件。
+- [x] 評估「網頁 GUI → Tauri／Rust → Python sidecar → CUDA／設備」的串接方式（採子程序 stdio JSON-RPC，協定 v1 定義於 `aoi_sidecar/protocol.py` 與 AGENT.md）；比較子程序 IPC 與直接呼叫方案，定義 Recipe、工作 ID、進度、結果、取消、錯誤及實際 backend 的介面。
+- [x] 梳理 GUI workers 與 workflow controllers 的 Qt 相依：檢測、批次、監控、預熱、對照、權限與設定已由 sidecar 以不依賴 Qt 的方式提供（`core/access_control.py`、`aoi_sidecar/`）。
+- [ ] 梳理 `CcdController` 的 Qt 相依，把設備流程整理成不依賴 Qt 的介面，保留連線、關閉、取消與資源釋放順序。
 - [ ] 驗證大型影像縮放、平移、座標對齊、輪廓疊圖與批次縮圖；評估影像傳輸及快取，避免以 JSON 傳送完整像素，限制佇列與記憶體使用。
-- [ ] 建立最小原型：合成影像、demo Recipe、單張檢測、PASS／NG、結果顯示及取消；比對現有 CPU 結果，確認缺 CUDA DLL fallback 和嚴格 CUDA 報錯行為。
-- [ ] 分階段移植 Recipe Designer、批次／監控及結果頁；保留參數分組、隱藏參數值與後端權限驗證，規劃現有 QSettings／使用者設定的相容遷移。
+- [x] 建立最小原型：合成影像、demo Recipe、單張檢測、PASS／NG、結果顯示及取消；比對現有 CPU 結果，確認缺 CUDA DLL fallback 和嚴格 CUDA 報錯行為（sidecar `--smoke-test` 與真實桌面版 CDP 實測）。
+- [x] 分階段移植 Recipe Designer、批次／資料夾監控及結果頁（相機直連監控隨設備整合）；保留參數分組、隱藏參數值與後端權限驗證，規劃現有 QSettings／使用者設定的相容遷移。
 - [ ] 最後串接 CCD／光源／取像流程，驗證執行緒、重連、關閉和忙碌時取消；載入 Recipe 不得自行寫入設備，實機驗收另列待辦。
-- [ ] 評估 Tauri Windows `.msi`／NSIS `setup.exe`、Python sidecar、CUDA DLL／SDK 的佈署與版本對應；確認 WebView2 離線安裝策略，以及無 Python 開發環境、無 GPU／SDK 和中文路徑的執行結果。
+- [x] 評估 Tauri Windows `.msi`／NSIS `setup.exe`、Python sidecar、CUDA DLL／SDK 的佈署與版本對應；確認 WebView2 離線安裝策略，以及無 Python 開發環境、無 GPU／SDK 和中文路徑的執行結果：採 NSIS（每使用者安裝）＋ WebView2 離線安裝；安裝於含中文的使用者路徑後，程式只使用隨附的 `aoi-sidecar.exe`，無 GPU／SDK 下完成單張檢測，正常關閉無殘留程序，靜默解除安裝無殘留。CUDA DLL 隨附與版本對應待 RTX 3090 機台。
 - [ ] 訂定新舊 GUI 的行為與效能驗收基準，量測啟動、影像顯示、批次吞吐及記憶體；遷移期間保留現有 GUI，原型結果與使用者確認後再決定正式切換。
 
 參考：[Tauri Windows 封裝](https://v2.tauri.app/distribute/windows-installer/)、[Python 等外部程式的 sidecar 封裝](https://v2.tauri.app/develop/sidecar/)。
@@ -45,6 +46,18 @@
 - [ ] 維持 CPU 正確性參考、完整 detector fallback 與舊 native ABI 相容。
 
 ## 完成紀錄
+
+### 2026-10-05 — TileScope AOI 桌面版 v0.1.0、改名與協作設定
+
+- 新增不依賴 Qt 的 Python sidecar（stdio JSON-RPC 協定 v1）：單一工作排程、取消後才回報、權限過濾（未分類參數預設隱藏、工程模式保留內層值與 camera 區段）、預覽、設定與設備可用性探測，以及 `--smoke-test`（CPU 等價、缺 DLL 零 GPU 呼叫回退、嚴格 CUDA 報錯、不載入 Qt）。
+- 新增 Tauri 2 桌面版（Rust 宿主 + React 前端）：sidecar 生命週期、非同步命令、重啟世代保護、權限跟隨 sidecar、backend 標示只依結果；以 WebView2 DevTools 實測真實程式的單張檢測、OP 預設模式與關閉後無殘留程序。
+- 新增 `packaging/scripts/build_desktop.ps1` 與 `aoi-sidecar.spec`：凍結 sidecar、smoke test、非 ASCII 路徑自動改在 ASCII 目錄建置前端、NSIS 安裝檔含 WebView2 離線安裝。
+- 產品改名為 TileScope AOI（PySide6 版為 TileScope AOI Classic）；CUDA DLL 檔名與 ABI、資料格式 ID 不變，`VISIONFLOW_*` 環境變數與舊 QSettings／設定檔保留相容讀取。
+- AI 協作設定（skills、subagent、MCP、CLAUDE.md、HERMES.md）納入版控並依新架構重寫，新增 `aoi-desktop-development` 與週報修內文模式；模式密碼可由 `TILESCOPE_MODE_PASSWORDS_FILE` 覆寫。
+- 授權改為 PolyForm Noncommercial 1.0.0；README、AGENT.md、第三方授權說明依新架構重寫。
+- sidecar 容忍 stdin 行首 UTF-8 BOM（Windows PowerShell 5.1 主控台預設會加），建置腳本的協定自檢改以無 BOM 寫入並讀到兩個回應為止。
+- 安裝檔 `TileScope-AOI-0.1.0-setup.exe`（263 MB）：建置時凍結 sidecar smoke 5/5、stdio 協定自檢通過；實際靜默安裝、以 DevTools 驗證 OP 預設模式與單張檢測、正常關閉無殘留、靜默解除安裝無殘留。
+- 驗證：`unittest discover -s tests` 共 1306 項通過；compileall、CUDA 靜態 preflight、sidecar smoke、Classic GUI offscreen、`cargo test`／`cargo clippy` 與 `git diff --check` 通過。無 GPU，未做 CUDA 編譯或實機驗收；設備控制尚未移入桌面版。
 
 ### 2026-10-04 — 取像程式來源同意紀錄
 

@@ -147,7 +147,9 @@ class Protocol:
             line = stdin.readline()
             if not line:
                 break
-            text = line.decode("utf-8", errors="replace").strip()
+            # A host whose stdin encoder emits a UTF-8 BOM (Windows PowerShell 5.1 consoles do) must not
+            # lose its first request, so tolerate a leading BOM on any line.
+            text = line.decode("utf-8", errors="replace").lstrip("﻿").strip()
             if not text:
                 continue
             try:

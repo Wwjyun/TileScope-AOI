@@ -80,6 +80,29 @@ class ProtocolDispatchTests(unittest.TestCase):
         self.assertEqual(frames[0]["error"]["data"]["code"], INTERNAL)
         self.assertEqual(frames[0]["error"]["message"], "炸掉了")
 
+    def test_leading_utf8_bom_on_a_request_line_is_tolerated(self):
+        import io
+
+        service = _FakeService()
+        service.runtime_status_payload = lambda: {"sidecar": "ready"}
+        service.shutdown_response = lambda: {"ok": True}
+        service.shutdown = lambda: None
+        stdin = io.BytesIO(
+            b"\xef\xbb\xbf"
+            + b'{"jsonrpc":"2.0","id":1,"method":"hello","params":{}}\n'
+            + b'{"jsonrpc":"2.0","id":2,"method":"shutdown","params":{}}\n'
+        )
+        fd, name = tempfile.mkstemp()
+        try:
+            Protocol(writer=ProtocolWriter(fd), stdin_buffer=stdin).run(service)
+            os.lseek(fd, 0, os.SEEK_SET)
+            frames = [json.loads(line) for line in os.read(fd, 8192).decode("utf-8").splitlines() if line.strip()]
+        finally:
+            os.close(fd)
+            os.unlink(name)
+        hello = [frame for frame in frames if frame.get("id") == 1]
+        self.assertEqual(hello, [{"jsonrpc": "2.0", "id": 1, "result": {"method": "hello"}}])
+
     def test_shutdown_returns_ok_and_stops_the_loop(self):
         service = _FakeService()
         fd, name = tempfile.mkstemp()
