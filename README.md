@@ -112,4 +112,4 @@ cd desktop\src-tauri; cargo test; cargo clippy
 
 ## 授權與來源
 
-本專案以 [PolyForm Noncommercial 1.0.0](LICENSE) 授權：個人、研究、教育等非商業用途可使用與修改，商業使用需另行取得授權。第三方元件依各自授權，見 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)；來源紀錄見 [docs/source-provenance.md](docs/source-provenance.md)。工作清單見 [Todo.md](Todo.md)。
+本專案以 [PolyForm Noncommercial 1.0.0](LICENSE) 授權（著作權聲明見 [NOTICE](NOTICE)）：個人、研究、教育等非商業用途可使用與修改，商業使用需另行取得授權。第三方元件依各自授權，見 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)；來源紀錄見 [docs/source-provenance.md](docs/source-provenance.md)。工作清單見 [Todo.md](Todo.md)。

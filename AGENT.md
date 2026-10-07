@@ -4,7 +4,7 @@ These rules apply to every AI agent working in this repository (Codex, Claude Co
 
 ## Project and environment
 
-TileScope AOI is a private synthetic demonstration of a recipe-driven OpenCV inspection system. The primary GUI is a Tauri 2 desktop app (`desktop/`: Rust host + React frontend) that drives a Qt-free Python sidecar (`aoi_sidecar/`); the PySide6 GUI is kept as **TileScope AOI Classic** during the migration. CUDA is an optional DLL backend.
+TileScope AOI is a synthetic demonstration of a recipe-driven OpenCV inspection system. The primary GUI is a Tauri 2 desktop app (`desktop/`: Rust host + React frontend) that drives a Qt-free Python sidecar (`aoi_sidecar/`); the PySide6 GUI is kept as **TileScope AOI Classic** during the migration. CUDA is an optional DLL backend.
 
 ## Source and distribution boundary
 

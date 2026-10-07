@@ -47,6 +47,13 @@
 
 ## 完成紀錄
 
+### 2026-10-07 — 公開 repo 整理
+
+- 原始碼改以新的公開 repo `Wwjyun/TileScope-AOI` 作學習與作品展示，只推送整理後的 main；原 repo 改名為 `TileScope-AOI-archive` 並維持私有，保留舊 Actions 紀錄、artifacts 與 Release 草稿。
+- `LICENSE` 改為 PolyForm Noncommercial 1.0.0 原文（與官方文字逐位元相同，供 GitHub 辨識授權），著作權聲明移至 `NOTICE`；Classic、sidecar 打包與安裝檔建置都隨附 `NOTICE`。
+- 公開 repo 停用兩個 RTX 3090 workflow（自架 GPU runner 仍註冊於 archive repo）；`AGENT.md` 專案描述改為 synthetic demonstration。
+- 驗證：`unittest discover -s tests` 共 1306 項通過；`git diff --check` 通過。
+
 ### 2026-10-05 — 桌面版 UI 實測修正與截圖
 
 - 以真實 sidecar 逐頁操作桌面版時發現並修正：單張檢測完成時 `flattenDefects` 未匯入導致結果不顯示；執行頁與批次頁把 Recipe 外層包裝當成 Recipe 本體；批次／監控項目的缺陷數、NG tiles 與 tile 數讀錯欄位；批次儀表板與監控的切圖散佈圖改用 `detail.tiles` 真實資料（原為原型的決定性假資料）；縮圖改用 sidecar 輸出的 overlay；Recipe 設計的 detector catalog 由 sidecar 陣列格式正規化，切換權限後重新讀取 catalog 與 Recipe，工程模式顯示隱藏內層參數數量；執行環境抽屜改為如實顯示「同時執行工作 1」；密碼對話框不再顯示示範密碼。

@@ -36,6 +36,7 @@ class DesktopPackagingContractTests(unittest.TestCase):
         self.assertIn("source-provenance.md", self.spec)
         self.assertIn("THIRD_PARTY_NOTICES.md", self.spec)
         self.assertIn("LICENSE", self.spec)
+        self.assertIn("NOTICE", self.spec)
         self.assertIn("name='aoi-sidecar'", self.spec)
         self.assertIn("console=True", self.spec)
 

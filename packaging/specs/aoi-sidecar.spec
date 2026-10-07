@@ -30,6 +30,7 @@ a = Analysis(
         (str(ROOT / 'docs' / 'source-provenance.md'), '.'),
         (str(ROOT / 'THIRD_PARTY_NOTICES.md'), '.'),
         (str(ROOT / 'LICENSE'), '.'),
+        (str(ROOT / 'NOTICE'), '.'),
     ],
     hiddenimports=[],
     hookspath=[],

@@ -26,6 +26,7 @@ a = Analysis(
         (str(ROOT / 'docs' / 'source-provenance.md'), '.'),
         (str(ROOT / 'THIRD_PARTY_NOTICES.md'), '.'),
         (str(ROOT / 'LICENSE'), '.'),
+        (str(ROOT / 'NOTICE'), '.'),
     ],
     # pythonnet loads the camera machine's own Sapera LT SapClassBasic.dll at runtime on the .NET
     # Framework runtime. The managed hooks collect clr.pyd/Python.Runtime.dll; the vendor DLL and

@@ -129,6 +129,7 @@ $siteDocs = @{
     "THIRD_PARTY_NOTICES.md" = "THIRD_PARTY_NOTICES.md"
     "distribution-policy.json" = "distribution-policy.json"
     "LICENSE" = "LICENSE"
+    "NOTICE" = "NOTICE"
 }
 foreach ($source in $siteDocs.Keys) {
     $sourcePath = Join-Path $RepoRoot $source
