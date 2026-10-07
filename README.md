@@ -1,4 +1,5 @@
 # TileScope AOI
+本專案僅作學習與作品展示，不提供商業使用
 
 以 Recipe 驅動的影像自動光學檢測（AOI）系統：把大圖切成 tile，交給可組合的傳統 CV／ONNX detector 判定 PASS／NG，輸出缺陷座標、疊圖與報表。CPU 是正確性基準，CUDA 為選用加速；同一套檢測核心可由 Tauri 桌面版、PySide6 Classic GUI 或 CLI 驅動。
 

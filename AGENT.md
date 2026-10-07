@@ -8,7 +8,7 @@ TileScope AOI is a private synthetic demonstration of a recipe-driven OpenCV ins
 
 ## Source and distribution boundary
 
-- Keep the repository private while distribution-policy.json lists unresolved reviews.
+
 - All bundled recipes and detector defaults come from detectors/demo_defaults.py and synthetic images only.
 - Public detector IDs and labels are demo1 through demo12; no production-ID aliases.
 - Do not copy calibration, images, parameters, logs or legacy acquisition source from a company.
